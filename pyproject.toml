@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-tally"
+version = "0.1.0"
+description = "Track costs across every AI coding agent CLI — one dashboard for Claude Code, Codex, Gemini CLI, OpenClaw, NeMoCLAW, and more."
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{name = "Hiren Thakore", email = "hiren@example.com"}]
+keywords = ["ai", "agents", "cost-tracking", "cli", "claude-code", "codex", "openclaw"]
+
+dependencies = [
+    "click>=8.0",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+
+[project.scripts]
+agent-tally = "agent_tally.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["agent_tally", "tests"]
+
+[options.entry_points]
+console_scripts = "agent-tally"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-v"]

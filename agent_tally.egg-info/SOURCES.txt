@@ -1,0 +1,13 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+agent_tally.egg-info/PKG-INFO
+agent_tally.egg-info/SOURCES.txt
+agent_tally.egg-info/dependency_links.txt
+agent_tally.egg-info/entry_points.txt
+agent_tally.egg-info/requires.txt
+agent_tally.egg-info/top_level.txt
+tests/test_detector.py
+tests/test_pricing.py
+tests/test_storage.py
