@@ -2,6 +2,7 @@ Metadata-Version: 2.4
 Name: agent-tally
 Version: 0.1.0
 Summary: Track costs across every AI coding agent CLI — one dashboard for Claude Code, Codex, Gemini CLI, OpenClaw, NeMoCLAW, and more.
+Author: Hiren Thakore
 Author-email: Hiren Thakore <hiren@example.com>
 License: MIT
 Keywords: ai,agents,cost-tracking,cli,claude-code,codex,openclaw
@@ -14,6 +15,7 @@ Requires-Dist: pyyaml>=6.0
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Dynamic: author
 Dynamic: license-file
 Dynamic: requires-python
 

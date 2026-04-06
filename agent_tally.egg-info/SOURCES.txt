@@ -8,6 +8,9 @@ agent_tally.egg-info/dependency_links.txt
 agent_tally.egg-info/entry_points.txt
 agent_tally.egg-info/requires.txt
 agent_tally.egg-info/top_level.txt
+tests/test_budget.py
 tests/test_detector.py
+tests/test_notifier.py
 tests/test_pricing.py
 tests/test_storage.py
+tests/test_ticker.py
