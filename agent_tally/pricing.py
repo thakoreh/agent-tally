@@ -1,6 +1,7 @@
 """Pricing configuration for AI models."""
 
 from __future__ import annotations
+
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,12 +15,13 @@ DEFAULT_PRICING_FILE = DEFAULT_CONFIG_DIR / "pricing.yaml"
 DEFAULT_DB_PATH = DEFAULT_CONFIG_DIR / "db.sqlite"
 
 
-@dataclass
 class ModelPricing:
     """Pricing for a single model (per million tokens)."""
-    name: str
-    input: float = 0.0
-    output: float = 0.0
+
+    def __init__(self, name: str, input: float = 0.0, output: float = 0.0) -> None:
+        self.name = name
+        self.input = input
+        self.output = output
 
     def cost(self, tokens_in: int, tokens_out: int) -> float:
         """Calculate cost for given token usage."""
@@ -96,8 +98,8 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
 class PricingConfig:
     """Manages model pricing configuration."""
 
-    def __init__(self, config_path: Optional[Path] = None):
-        self.config_path = config_path or DEFAULT_PRICING_FILE
+    def __init__(self, config_path: Optional[Path] = None) -> None:
+        self.config_path: Path = config_path or DEFAULT_PRICING_FILE
         self._models: dict[str, ModelPricing] = {}
         self._load()
 
@@ -112,14 +114,14 @@ class PricingConfig:
         # Override with user config if exists
         if self.config_path.exists():
             with open(self.config_path) as f:
-                user_config = yaml.safe_load(f) or {}
+                user_config: dict = yaml.safe_load(f) or {}
 
             if user_config and "models" in user_config:
                 for name, prices in user_config["models"].items():
                     self._models[name] = ModelPricing(
                         name=name,
-                        input_price=prices.get("input", 0.0),
-                        output_price=prices.get("output", 0.0),
+                        input=prices.get("input", 0.0),
+                        output=prices.get("output", 0.0),
                     )
 
     def get(self, model_name: str) -> ModelPricing:
@@ -141,8 +143,8 @@ class PricingConfig:
         """Set pricing for a model."""
         self._models[model_name] = ModelPricing(
             name=model_name,
-            input_price=input_price,
-            output_price=output_price,
+            input=input_price,
+            output=output_price,
         )
         self._save()
 

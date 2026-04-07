@@ -1,6 +1,7 @@
 """Agent detection and command parsing."""
 
 from __future__ import annotations
+
 import re
 import shutil
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from typing import Optional
 
 
 class AgentType(Enum):
+    """Supported agent types."""
     CLAUDE_CODE = "claude-code"
     CODEX = "codex"
     GEMINI_CLI = "gemini-cli"
@@ -23,6 +25,7 @@ class AgentType(Enum):
 
 @dataclass
 class AgentInfo:
+    """Metadata about a detected agent CLI."""
     agent_type: AgentType
     display_name: str
     cli_command: str  # e.g. "claude", "codex", "openclaw"
@@ -137,18 +140,18 @@ def detect_agent(args: list[str]) -> Optional[AgentInfo]:
     if not args:
         return None
 
-    # The first arg should be the the agent command
-    cmd = args[0]
+    # The first arg should be the agent command
+    cmd: str = args[0]
 
     # Handle paths like /usr/local/bin/claude
-    binary = cmd.rsplit("/", 1)[-1]
+    binary: str = cmd.rsplit("/", 1)[-1]
 
     # Check direct match
     if binary in AGENT_MAP:
         return AGENT_MAP[binary]
 
     # Check if binary exists and match by name
-    resolved = shutil.which(binary)
+    resolved: Optional[str] = shutil.which(binary)
     if resolved:
         resolved_name = resolved.rsplit("/", 1)[-1]
         if resolved_name in AGENT_MAP:
@@ -176,8 +179,12 @@ def detect_agent(args: list[str]) -> Optional[AgentInfo]:
     )
 
 
-def parse_tokens(output: str, agent_info: AgentInfo) -> dict:
-    """Parse token usage from agent output."""
+def parse_tokens(output: str, agent_info: AgentInfo) -> dict[str, int]:
+    """Parse token usage from agent output.
+
+    Returns a dict with 'tokens_in' and 'tokens_out' keys,
+    or an empty dict if no tokens were found.
+    """
     for pattern in agent_info.token_patterns:
         match = re.search(pattern, output, re.IGNORECASE | re.DOTALL)
         if match:
