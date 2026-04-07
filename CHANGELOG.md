@@ -5,6 +5,22 @@ All notable changes to agent-tally will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-04-07
+
+### Added
+- `history` command — browse past session costs with `--agent`, `--since`, `--min-cost`, `--json` filters
+- `completion` command — generate shell completions for bash/zsh/fish with `--install` flag
+- 29 integration tests covering CLI, storage, pricing, detection, wrapper, and budget end-to-end
+- `.gitignore` (was missing — __pycache__, eggs, build artifacts)
+- `py.typed` marker for PEP 561 type hint support
+
+### Changed
+- Better error messages: distinct exit codes for command not found (127), permission denied (126), unexpected errors
+- KeyboardInterrupt now saves partial session data before exiting
+- Version now read from `__init__.__version__` instead of hardcoded in CLI
+- Fixed version mismatch across pyproject.toml, setup.py, and __init__.py
+- Cleaned up pyproject.toml for PyPI: proper `include` filter, project URLs
+
 ## [0.3.0] - 2026-04-07
 
 ### Added
