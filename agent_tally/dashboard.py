@@ -86,6 +86,7 @@ class Dashboard:
             self._render_current_session(),
             self._render_recent_sessions(),
             self._render_top_agents(),
+            self._render_top_models(),
             self._render_footer(),
         )
     
@@ -252,6 +253,44 @@ class Dashboard:
                 str(key),
                 str(sessions),
                 tokens_str,
+                f"[{cost_style}]${cost:.4f}[/{cost_style}]",
+            )
+        
+        return table
+    
+    def _render_top_models(self) -> Table:
+        """Render top models by cost table."""
+        week_ago = datetime.now() - timedelta(days=7)
+        summaries = self.storage.summary(since=week_ago, group_by="model")
+        
+        table = Table(
+            title="Top Models (Last 7 Days)",
+            box=box.ROUNDED,
+            show_lines=False,
+            title_style="bold cyan",
+        )
+        
+        table.add_column("Model", style="bold")
+        table.add_column("Sessions", justify="right")
+        table.add_column("Avg Cost", justify="right")
+        table.add_column("Total Cost", justify="right", style="yellow")
+        
+        if not summaries:
+            table.add_row("—", "No data", "—", "—")
+            return table
+        
+        for row in summaries[:5]:
+            key = row.get("grp_key", "unknown") or "unknown"
+            sessions = row.get("session_count", 0)
+            cost = row.get("total_cost", 0.0) or 0.0
+            avg_cost = cost / sessions if sessions > 0 else 0.0
+            
+            cost_style = "green" if cost < 5.0 else ("yellow" if cost < 20.0 else "red")
+            
+            table.add_row(
+                str(key)[:30],
+                str(sessions),
+                f"${avg_cost:.4f}",
                 f"[{cost_style}]${cost:.4f}[/{cost_style}]",
             )
         
