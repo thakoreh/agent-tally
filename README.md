@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/agent-tally.svg)](https://pypi.org/project/agent-tally/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://pypi.org/project/agent-tally/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/hiren-tutorials/agent-tally?style=social)](https://github.com/hiren-tutorials/agent-tally)
+[![GitHub stars](https://img.shields.io/github/stars/thakoreh/agent-tally?style=social)](https://github.com/thakoreh/agent-tally)
 
 **Real-time cost tracker for AI coding agents.** Wrap any CLI agent, see a live cost ticker while it runs, and enforce budgets with an automatic kill switch.
 
@@ -122,7 +122,7 @@ tokscale is great for retroactive analysis. agent-tally is for when you want to 
 4. Run `pytest`
 5. Open a PR
 
-Bug reports and feature requests welcome in [Issues](https://github.com/hiren-tutorials/agent-tally/issues).
+Bug reports and feature requests welcome in [Issues](https://github.com/thakoreh/agent-tally/issues).
 
 ## License
 
