@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 DEFAULT_DB_PATH = Path.home() / ".agent-tally" / "db.sqlite"
+MAX_TASK_PROMPT_LENGTH = 10_000
 
 
 @dataclass
@@ -62,6 +63,19 @@ class Storage:
 
     def insert(self, session: Session) -> int:
         """Insert a new session, return the ID."""
+        # Validate task_prompt length
+        if len(session.task_prompt) > MAX_TASK_PROMPT_LENGTH:
+            session = Session(
+                agent=session.agent,
+                model=session.model,
+                task_prompt=session.task_prompt[:MAX_TASK_PROMPT_LENGTH],
+                tokens_in=session.tokens_in,
+                tokens_out=session.tokens_out,
+                cost=session.cost,
+                started_at=session.started_at,
+                ended_at=session.ended_at,
+                duration_sec=session.duration_sec,
+            )
         cursor = self.conn.execute(
             """INSERT INTO sessions (agent, model, task_prompt, tokens_in, tokens_out, cost, started_at, ended_at, duration_sec)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",

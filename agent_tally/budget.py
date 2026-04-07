@@ -83,10 +83,18 @@ class BudgetManager:
             }, f, default_flow_style=False)
     
     def set_limits(self, daily: Optional[float] = None, session: Optional[float] = None) -> None:
-        """Set budget limits."""
+        """Set budget limits.
+
+        Raises:
+            ValueError: If daily or session limit is negative.
+        """
         if daily is not None:
+            if daily < 0:
+                raise ValueError(f"daily_limit cannot be negative, got {daily}")
             self.config.daily_limit = daily
         if session is not None:
+            if session < 0:
+                raise ValueError(f"session_limit cannot be negative, got {session}")
             self.config.session_limit = session
         self.save_config()
     
