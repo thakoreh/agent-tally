@@ -38,9 +38,18 @@ AGENT_MAP: dict[str, AgentInfo] = {
         cli_command="claude",
         model_pattern=r"model[:\s]+(\S+)",
         token_patterns=[
+            # "15234 tokens in, 8321 out, cache 5000" (Claude Code)
             r"(\d+)\s*tokens?\s*in.*?(\d+).*?tokens?\s*out.*?(\d+)",
-            r"input[:\s]+(\d+).*?output[:\s]+(\d+)",
+            # "Tokens: 15234 in, 8321 out"
             r"Tokens:\s*(\d+)\s*in.*?(\d+)\s*out",
+            # "input: 5000 output: 2000"
+            r"input[:\s]+(\d+).*?output[:\s]+(\d+)",
+            # "Input tokens: 5000, Output tokens: 2000"
+            r"[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)",
+            # JSON-style: "usage": {"input_tokens": 5000, "output_tokens": 2000}
+            r'"input_tokens"[:\s]+(\d+).*?"output_tokens"[:\s]+(\d+)',
+            # API-style: "prompt_tokens": 5000, "completion_tokens": 2000
+            r'"prompt_tokens"[:\s]+(\d+).*?"completion_tokens"[:\s]+(\d+)',
         ],
     ),
     "codex": AgentInfo(
@@ -51,6 +60,8 @@ AGENT_MAP: dict[str, AgentInfo] = {
         token_patterns=[
             r"tokens[_\s]*in[:\s]+(\d+).*?tokens[_\s]*out[:\s]+(\d+)",
             r"(\d+)\s*input\s*tokens.*?(\d+)\s*output\s*tokens",
+            r"[Ii]nput[:\s]+(\d+).*?[Oo]utput[:\s]+(\d+)",
+            r'"input_tokens"[:\s]+(\d+).*?"output_tokens"[:\s]+(\d+)',
         ],
     ),
     "gemini": AgentInfo(
@@ -61,6 +72,9 @@ AGENT_MAP: dict[str, AgentInfo] = {
         token_patterns=[
             r"input.*?(\d+).*?output.*?(\d+)",
             r"tokens.*?(\d+).*?tokens.*?(\d+)",
+            r"[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)",
+            # Google API style: totalTokenCount / candidatesTokenCount
+            r'"totalTokenCount"[:\s]+(\d+).*?"candidatesTokenCount"[:\s]+(\d+)',
         ],
     ),
     "openclaw": AgentInfo(
@@ -71,6 +85,8 @@ AGENT_MAP: dict[str, AgentInfo] = {
         token_patterns=[
             r"tokens.*?(\d+).*?tokens.*?(\d+)",
             r"input.*?(\d+).*?output.*?(\d+)",
+            r"[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)",
+            r'"input_tokens"[:\s]+(\d+).*?"output_tokens"[:\s]+(\d+)',
         ],
     ),
     "nemoclaw": AgentInfo(
@@ -80,6 +96,7 @@ AGENT_MAP: dict[str, AgentInfo] = {
         model_pattern=r"model[:\s]+(\S+)",
         token_patterns=[
             r"tokens.*?(\d+).*?tokens.*?(\d+)",
+            r"input.*?(\d+).*?output.*?(\d+)",
         ],
     ),
     "kiro": AgentInfo(
@@ -89,6 +106,7 @@ AGENT_MAP: dict[str, AgentInfo] = {
         model_pattern=r"model[:\s]+(\S+)",
         token_patterns=[
             r"tokens.*?(\d+).*?tokens.*?(\d+)",
+            r"[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)",
         ],
     ),
     "auggie": AgentInfo(
@@ -98,6 +116,7 @@ AGENT_MAP: dict[str, AgentInfo] = {
         model_pattern=r"model[:\s]+(\S+)",
         token_patterns=[
             r"tokens.*?(\d+).*?tokens.*?(\d+)",
+            r"[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)",
         ],
     ),
     "goose": AgentInfo(
@@ -107,6 +126,7 @@ AGENT_MAP: dict[str, AgentInfo] = {
         model_pattern=r"model[:\s]+(\S+)",
         token_patterns=[
             r"tokens.*?(\d+).*?tokens.*?(\d+)",
+            r"[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)",
         ],
     ),
 }
@@ -144,7 +164,15 @@ def detect_agent(args: list[str]) -> Optional[AgentInfo]:
         display_name=binary,
         cli_command=binary,
         model_pattern=r"model[:\s]+(\S+)",
-        token_patterns=[r"(\d+)\s*token.*?(\d+)", r"input[:\s]+(\d+).*?output[:\s]+(\d+)"],
+        token_patterns=[
+            # Try many formats for generic agents
+            r'(\d+)\s*tokens?\s*in.*?(\d+).*?tokens?\s*out',
+            r'input[:\s]+(\d+).*?output[:\s]+(\d+)',
+            r'[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)',
+            r'"input_tokens"[:\s]+(\d+).*?"output_tokens"[:\s]+(\d+)',
+            r'"prompt_tokens"[:\s]+(\d+).*?"completion_tokens"[:\s]+(\d+)',
+            r'(\d+)\s*token.*?(\d+)',
+        ],
     )
 
 
