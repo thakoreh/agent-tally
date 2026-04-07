@@ -1,6 +1,6 @@
 """agent-tally — track costs across every AI coding agent in real-time."""
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 from .budget import BudgetManager, BudgetConfig, BudgetStatus
 from .config import AgentTallyConfig, load_config, save_config

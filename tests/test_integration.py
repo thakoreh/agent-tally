@@ -71,7 +71,7 @@ class TestCLIIntegration:
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
         assert "agent-tally" in result.output
-        assert "0.4.0" in result.output
+        assert "0.5.0" in result.output
 
     def test_no_args_shows_welcome(self):
         runner = CliRunner()

@@ -5,6 +5,17 @@ All notable changes to agent-tally will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-04-07
+
+### Added
+- 45 edge case tests covering pricing fuzzy matching, storage errors, budget validation, detector robustness, config edge cases, notifier resilience, and ticker edge cases (193 total tests)
+- Input validation: negative budget limits now raise `ValueError`
+- `MAX_TASK_PROMPT_LENGTH` (10,000 chars) — long prompts are silently truncated on insert
+
+### Changed
+- Malformed YAML config files now gracefully fall back to defaults (was already handled, now explicitly tested)
+- Version bumped to 0.5.0 across `__init__.py`, `pyproject.toml`, and `setup.py`
+
 ## [0.4.0] - 2026-04-07
 
 ### Added
