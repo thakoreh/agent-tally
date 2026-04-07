@@ -18,6 +18,7 @@ from .storage import Storage
 from .budget import BudgetManager, DEFAULT_BUDGET_FILE
 from .config import load_config, save_config, generate_default_config, DEFAULT_CONFIG_PATH
 from .dashboard import run_dashboard
+from . import __version__
 
 
 @click.group(invoke_without_command=True)
@@ -26,7 +27,7 @@ from .dashboard import run_dashboard
 def cli(ctx: click.Context, version: bool = False) -> None:
     """agent-tally — track costs across every AI coding agent in real-time."""
     if version:
-        click.echo("agent-tally 0.2.0")
+        click.echo(f"agent-tally {__version__}")
         return
 
     # If no subcommand, show welcome
@@ -210,6 +211,53 @@ def dashboard() -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# HISTORY COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.option("--limit", "-n", default=20, help="Number of sessions to show")
+@click.option("--agent", "-a", default=None, help="Filter by agent name")
+@click.option("--since", default="7d", help="Time window: 'today', '7d', '30d', 'all', or ISO date")
+@click.option("--min-cost", default=None, type=float, help="Minimum cost to show (USD)")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def history(limit: int, agent: Optional[str], since: str, min_cost: Optional[float], as_json: bool) -> None:
+    """Show past session costs chronologically."""
+    storage = Storage()
+    since_dt = _parse_since(since)
+    sessions = storage.query(agent=agent, since=since_dt, limit=limit)
+
+    if min_cost is not None:
+        sessions = [s for s in sessions if s.cost >= min_cost]
+
+    if not sessions:
+        click.echo("No sessions found.")
+        storage.close()
+        return
+
+    if as_json:
+        output = [
+            {
+                "id": s.id,
+                "agent": s.agent,
+                "model": s.model,
+                "task_prompt": s.task_prompt,
+                "tokens_in": s.tokens_in,
+                "tokens_out": s.tokens_out,
+                "cost": s.cost,
+                "started_at": s.started_at.isoformat() if s.started_at else None,
+                "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+                "duration_sec": s.duration_sec,
+            }
+            for s in sessions
+        ]
+        click.echo(json_mod.dumps(output, indent=2))
+    else:
+        print_session_table(sessions, title=f"Session History ({since})")
+
+    storage.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # SUMMARY COMMAND
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -332,6 +380,63 @@ def export(format: str, since: str, output: Optional[str]) -> None:
 # ═══════════════════════════════════════════════════════════════════════════
 # AGENTS COMMAND
 # ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]))
+@click.option("--install", is_flag=True, help="Install completions to your shell profile")
+def completion(shell: str, install: bool) -> None:
+    """Generate shell completion script.
+
+    Usage:
+        eval "$(agent-tally completion bash)"
+        eval "$(agent-tally completion zsh)"
+        agent-tally completion fish > ~/.config/fish/completions/agent-tally.fish
+
+    With --install, appends to your shell profile automatically.
+    """
+    import click.shell_completion
+
+    # Get the completion script
+    prog_name = "agent-tally"
+    cls = click.shell_completion.get_completion_class(shell)
+    if cls is None:
+        click.echo(f"Shell completion not supported for: {shell}")
+        sys.exit(1)
+
+    comp = cls(cli, {}, prog_name, "")
+    script = comp.source()
+
+    if install:
+        if shell == "bash":
+            rc_file = Path.home() / ".bashrc"
+            line = f'eval "$(_AGENT_TALLY_COMPLETE=bash_source agent-tally)"'
+        elif shell == "zsh":
+            rc_file = Path.home() / ".zshrc"
+            line = f'eval "$(_AGENT_TALLY_COMPLETE=zsh_source agent-tally)"'
+        elif shell == "fish":
+            rc_file = Path.home() / ".config" / "fish" / "completions" / "agent-tally.fish"
+            line = None
+        else:
+            click.echo(f"Unsupported shell: {shell}")
+            sys.exit(1)
+
+        if line is not None:
+            rc_file = Path(rc_file)
+            if rc_file.exists() and line in rc_file.read_text():
+                click.echo(f"Completion already installed in {rc_file}")
+            else:
+                with open(rc_file, "a") as f:
+                    f.write(f"\n# agent-tally shell completion\n{line}\n")
+                click.echo(f"Installed completion to {rc_file}")
+                click.echo("Restart your shell or run: source " + str(rc_file))
+        else:
+            # Fish
+            rc_file.parent.mkdir(parents=True, exist_ok=True)
+            rc_file.write_text(script)
+            click.echo(f"Installed completion to {rc_file}")
+    else:
+        click.echo(script)
+
 
 @cli.command()
 def agents() -> None:

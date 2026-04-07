@@ -8,6 +8,8 @@ import time
 from datetime import datetime
 from typing import Optional
 
+import click
+
 from .detector import AgentInfo, detect_agent, parse_tokens, parse_model
 from .pricing import PricingConfig
 from .storage import Session, Storage
@@ -91,12 +93,33 @@ class AgentWrapper:
 
         except FileNotFoundError:
             if self._ticker:
-                print(f"\n\033[31m✗ agent-tally: command not found: {self.args[0]}\033[0m", file=sys.stderr)
-            return 1
+                self._ticker.stop()
+            click.echo(f"\n\033[31m✗ agent-tally: command not found: {self.args[0]}\033[0m", file=sys.stderr)
+            click.echo(f"\033[90m  Make sure '{self.args[0]}' is installed and in your PATH.\033[0m", file=sys.stderr)
+            click.echo(f"\033[90m  Install help: https://github.com/thakoreh/agent-tally#supported-agents\033[0m", file=sys.stderr)
+            return 127
+        except PermissionError:
+            if self._ticker:
+                self._ticker.stop()
+            click.echo(f"\n\033[31m✗ agent-tally: permission denied: {self.args[0]}\033[0m", file=sys.stderr)
+            click.echo(f"\033[90m  Check that '{self.args[0]}' is executable.\033[0m", file=sys.stderr)
+            return 126
         except KeyboardInterrupt:
             if self._ticker:
-                print(f"\n\033[33m⏸ agent-tally: interrupted by user\033[0m")
+                self._ticker.stop()
+            click.echo(f"\n\033[33m⏸ agent-tally: session interrupted by user\033[0m")
+            # Save what we have so far
+            end_time = time.time()
+            self.session.ended_at = datetime.now()
+            self.session.duration_sec = round(end_time - start_time, 2)
+            self.storage.update(self.session)
             return 130
+        except Exception as e:
+            if self._ticker:
+                self._ticker.stop()
+            click.echo(f"\n\033[31m✗ agent-tally: unexpected error: {e}\033[0m", file=sys.stderr)
+            click.echo(f"\033[90m  This may be a bug. Please report: https://github.com/thakoreh/agent-tally/issues\033[0m", file=sys.stderr)
+            return 1
         finally:
             if self._ticker:
                 self._ticker.stop()

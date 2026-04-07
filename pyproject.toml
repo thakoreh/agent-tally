@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-tally"
-version = "0.2.0"
-description = "Track costs across every AI coding agent CLI — one dashboard for Claude Code, Codex, Gemini CLI, OpenClaw, NeMoCLAW, and more."
+version = "0.4.0"
+description = "Real-time cost tracking for AI coding agents with budget limits, kill switch, and TUI dashboard."
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.9"
@@ -25,7 +25,15 @@ dev = ["pytest>=7.0", "pytest-cov>=4.0"]
 agent-tally = "agent_tally.cli:cli"
 
 [tool.setuptools.packages.find]
-where = ["agent_tally", "tests"]
+include = ["agent_tally*"]
+
+[project.urls]
+Homepage = "https://github.com/thakoreh/agent-tally"
+Repository = "https://github.com/thakoreh/agent-tally"
+Issues = "https://github.com/thakoreh/agent-tally/issues"
+
+[tool.setuptools.package-data]
+agent_tally = ["py.typed"]
 
 [options.entry_points]
 console_scripts = "agent-tally"
