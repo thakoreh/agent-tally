@@ -1,8 +1,9 @@
 """agent-tally — track costs across every AI coding agent in real-time."""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from .budget import BudgetManager, BudgetConfig, BudgetStatus
+from .config import AgentTallyConfig, load_config, save_config
 from .ticker import CostTicker, IncrementalCostTracker
 from .notifier import Notifier, Alert
 from .dashboard import Dashboard
@@ -14,6 +15,9 @@ __all__ = [
     "BudgetManager",
     "BudgetConfig",
     "BudgetStatus",
+    "AgentTallyConfig",
+    "load_config",
+    "save_config",
     "CostTicker",
     "IncrementalCostTracker",
     "Notifier",
