@@ -53,6 +53,19 @@ AGENT_MAP: dict[str, AgentInfo] = {
             r'"input_tokens"[:\s]+(\d+).*?"output_tokens"[:\s]+(\d+)',
             # API-style: "prompt_tokens": 5000, "completion_tokens": 2000
             r'"prompt_tokens"[:\s]+(\d+).*?"completion_tokens"[:\s]+(\d+)',
+            # Additional patterns for robustness
+            r'total\s*tokens?[:\s]+(\d+)\s*,\s*tokens?\s*used[:\s]+(\d+)',
+            r'(\d+)\s*token\s*in.*?(\d+)\s*token\s*out',
+            r'(\d+)\s*input.*?(\d+)\s*output',
+            r'(\d+)\s* consumed.*?(\d+)\s*generated',
+            r'\b(\d+)\s*tokens?\s*input\b.*?\b(\d+)\s*tokens?\s*output\b',
+            r'input=(\d+).*?output=(\d+)',
+            # Streaming chunk format: "usage" with prompt/completion tokens
+            r'"usage"\s*:\s*\{[^}]*"prompt_tokens"\s*:\s*(\d+)[^}]*"completion_tokens"\s*:\s*(\d+)',
+            # Table format: "| Input | Output |" rows
+            r'\|\s*(\d+)\s*\|\s*(\d+)\s*\|.*tokens',
+            # SSE/data format: {"tokens": {"input": N, "output": M}}
+            r'"tokens"\s*:\s*\{[^}]*"input"\s*:\s*(\d+)[^}]*"output"\s*:\s*(\d+)',
         ],
     ),
     "codex": AgentInfo(
@@ -175,6 +188,23 @@ def detect_agent(args: list[str]) -> Optional[AgentInfo]:
             r'"input_tokens"[:\s]+(\d+).*?"output_tokens"[:\s]+(\d+)',
             r'"prompt_tokens"[:\s]+(\d+).*?"completion_tokens"[:\s]+(\d+)',
             r'(\d+)\s*token.*?(\d+)',
+            # Additional robust patterns
+            r'total\s*tokens?[:\s]+(\d+)\s*,\s*tokens?\s*used[:\s]+(\d+)',
+            r'(\d+)\s*token\s*in.*?(\d+)\s*token\s*out',
+            r'(\d+)\s*input.*?(\d+)\s*output',
+            r'(\d+)\s* consumed.*?(\d+)\s*generated',
+            r'\b(\d+)\s*tokens?\s*input\b.*?\b(\d+)\s*tokens?\s*output\b',
+            r'input=(\d+).*?output=(\d+)',
+            r'tokens_in[:\s]+(\d+).*?tokens_out[:\s]+(\d+)',
+            r'(\d+)\s*tokens?\s*\[in\].*?(\d+)\s*tokens?\s*\[out\]',
+            r'(\d+)\s*tokens?\s*in,\s*(\d+)\s*tokens?\s*$',
+            r'(\d+)\s*tokens?\s*read.*?(\d+)\s*tokens?\s*written',
+            # Streaming chunk format
+            r'"usage"\s*:\s*\{[^}]*"prompt_tokens"\s*:\s*(\d+)[^}]*"completion_tokens"\s*:\s*(\d+)',
+            # Table format: "| Input | Output |" rows
+            r'\|\s*(\d+)\s*\|\s*(\d+)\s*\|.*tokens',
+            # SSE/data format
+            r'"tokens"\s*:\s*\{[^}]*"input"\s*:\s*(\d+)[^}]*"output"\s*:\s*(\d+)',
         ],
     )
 

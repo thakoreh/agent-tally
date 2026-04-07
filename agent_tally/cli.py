@@ -330,7 +330,8 @@ def summary(by_agent: bool, by_model: bool, by_task: bool, since: str, limit: in
 @click.option("--format", "format", type=click.Choice(["json", "csv"]), default="json", help="Export format")
 @click.option("--since", "since", default="all", help="Time window")
 @click.option("--output", "-o", "output", default=None, help="Output file (default: stdout)")
-def export(format: str, since: str, output: Optional[str]) -> None:
+@click.option("--json", "as_json", is_flag=True, help="Shorthand for --format json (overrides --format)")
+def export(format: str, since: str, output: Optional[str], as_json: bool) -> None:
     """Export session data."""
     import csv
     import io
@@ -338,6 +339,9 @@ def export(format: str, since: str, output: Optional[str]) -> None:
     storage = Storage()
     since_dt = _parse_since(since) if since != "all" else None
     sessions = storage.query(since=since_dt, limit=10000)
+
+    if as_json:
+        format = "json"
 
     if not sessions:
         click.echo("No sessions to export.")

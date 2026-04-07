@@ -29,7 +29,7 @@ class AgentWrapper:
         budget_manager: Optional[BudgetManager] = None,
         notifier: Optional[Notifier] = None,
         enable_ticker: bool = True,
-    ):
+    ) -> None:
         self.args = args
         self.agent_info = detect_agent(args)
         self.pricing = pricing or PricingConfig()

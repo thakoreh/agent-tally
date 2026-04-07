@@ -89,6 +89,10 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "qwen-3": {"input": 0.15, "output": 0.60},
     "qwen-2.5-coder": {"input": 0.15, "output": 0.60},
     "yi-large": {"input": 0.30, "output": 0.90},
+    "dbrx-instruct": {"input": 0.25, "output": 0.50},
+    "mixtral-8x7b": {"input": 0.15, "output": 0.30},
+    "llama-3.1-8b": {"input": 0.05, "output": 0.15},
+    "llama-3.1-70b": {"input": 0.20, "output": 0.80},
     # ── Cursor ─────────────────────────────────────────────────
     "cursor-small": {"input": 0.15, "output": 0.60},
     "cursor-pro": {"input": 3.00, "output": 15.00},
