@@ -9,11 +9,14 @@ from typing import Optional
 
 import click
 
+import json as json_mod
+
 from .display import print_session_table, print_summary_table, print_agents_list, print_welcome
 from .detector import AGENT_MAP
 from .pricing import PricingConfig, DEFAULT_PRICING_FILE
 from .storage import Storage
 from .budget import BudgetManager, DEFAULT_BUDGET_FILE
+from .config import load_config, save_config, generate_default_config, DEFAULT_CONFIG_PATH
 from .dashboard import run_dashboard
 
 
@@ -216,7 +219,8 @@ def dashboard() -> None:
 @click.option("--by-task", "by_task", is_flag=True, help="Group by task")
 @click.option("--since", "since", default="today", help="Time window: 'today', '7d', '30d', 'all', or ISO date")
 @click.option("--limit", "limit", default=50, help="Max results")
-def summary(by_agent: bool, by_model: bool, by_task: bool, since: str, limit: int) -> None:
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON for programmatic use")
+def summary(by_agent: bool, by_model: bool, by_task: bool, since: str, limit: int, as_json: bool) -> None:
     """Show cost summary."""
     storage = Storage()
 
@@ -234,15 +238,38 @@ def summary(by_agent: bool, by_model: bool, by_task: bool, since: str, limit: in
 
     # Get summary
     summaries = storage.summary(since=since_dt, group_by=group_by)
-    if summaries:
-        print_summary_table(summaries, group_by=group_by)
-    else:
-        click.echo("No sessions found for the given time range.")
-
-    # Also show recent sessions
     sessions = storage.query(since=since_dt, limit=limit)
-    if sessions:
-        print_session_table(sessions, title="Recent Sessions")
+
+    if as_json:
+        output = {
+            "summary": summaries,
+            "sessions": [
+                {
+                    "id": s.id,
+                    "agent": s.agent,
+                    "model": s.model,
+                    "task_prompt": s.task_prompt,
+                    "tokens_in": s.tokens_in,
+                    "tokens_out": s.tokens_out,
+                    "cost": s.cost,
+                    "started_at": s.started_at.isoformat() if s.started_at else None,
+                    "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+                    "duration_sec": s.duration_sec,
+                }
+                for s in sessions
+            ],
+            "since": since,
+            "group_by": group_by,
+        }
+        click.echo(json_mod.dumps(output, indent=2))
+    else:
+        if summaries:
+            print_summary_table(summaries, group_by=group_by)
+        else:
+            click.echo("No sessions found for the given time range.")
+
+        if sessions:
+            print_session_table(sessions, title="Recent Sessions")
 
     storage.close()
 
@@ -257,7 +284,6 @@ def summary(by_agent: bool, by_model: bool, by_task: bool, since: str, limit: in
 @click.option("--output", "-o", "output", default=None, help="Output file (default: stdout)")
 def export(format: str, since: str, output: Optional[str]) -> None:
     """Export session data."""
-    import json
     import csv
     import io
 
@@ -285,7 +311,7 @@ def export(format: str, since: str, output: Optional[str]) -> None:
         })
 
     if format == "json":
-        data = json.dumps(rows, indent=2)
+        data = json_mod.dumps(rows, indent=2)
     else:
         buf = io.StringIO()
         if rows:
@@ -323,16 +349,50 @@ def config() -> None:
     pass
 
 
+@config.command(name="init")
+def config_init() -> None:
+    """Create a sample config file at ~/.agent-tally/config.yaml."""
+    if DEFAULT_CONFIG_PATH.exists():
+        click.echo(f"Config file already exists at {DEFAULT_CONFIG_PATH}")
+        if not click.confirm("Overwrite?"):
+            return
+
+    DEFAULT_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DEFAULT_CONFIG_PATH.write_text(generate_default_config())
+    click.echo(f"Created sample config at {DEFAULT_CONFIG_PATH}")
+    click.echo("Edit it to customize your defaults.")
+
+
+@config.command(name="show")
+def config_show() -> None:
+    """Show current configuration."""
+    cfg = load_config()
+    click.echo("Current configuration:")
+    click.echo(f"  Daily budget: {cfg.daily_budget or 'not set'}")
+    click.echo(f"  Session budget: {cfg.session_budget or 'not set'}")
+    click.echo(f"  Default model: {cfg.default_model}")
+    click.echo(f"  Currency: {cfg.currency}")
+    click.echo(f"  Timezone: {cfg.timezone}")
+    click.echo(f"  Warn at 80%: {cfg.warn_at_80}")
+    click.echo(f"  Warn at 95%: {cfg.warn_at_95}")
+    click.echo(f"  Kill at 100%: {cfg.kill_at_100}")
+    if cfg.webhook_url:
+        click.echo(f"  Webhook: {cfg.webhook_url[:50]}...")
+    if cfg.model_pricing:
+        click.echo(f"  Custom pricing: {len(cfg.model_pricing)} models")
+    if cfg.ignored_agents:
+        click.echo(f"  Ignored agents: {', '.join(cfg.ignored_agents)}")
+
+
 @config.command(name="edit")
 def config_edit() -> None:
-    """Open pricing config in your editor."""
-    pricing = PricingConfig()
-    # Ensure file exists
-    if not pricing.config_path.exists():
-        pricing._save()
+    """Open config file in your editor."""
+    if not DEFAULT_CONFIG_PATH.exists():
+        DEFAULT_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        DEFAULT_CONFIG_PATH.write_text(generate_default_config())
 
     editor = subprocess.os.environ.get("EDITOR", "nano")
-    subprocess.run([editor, str(pricing.config_path)])
+    subprocess.run([editor, str(DEFAULT_CONFIG_PATH)])
 
 
 @config.command(name="set")
@@ -350,9 +410,9 @@ def config_set(model_name: str, direction: str, price: float) -> None:
     click.echo(f"Set {model_name} {direction} = ${price:.2f}/M tokens")
 
 
-@config.command(name="show")
-def config_show() -> None:
-    """Show current pricing configuration."""
+@config.command(name="pricing")
+def config_pricing() -> None:
+    """Show current pricing for all models."""
     pricing = PricingConfig()
     from rich.console import Console
     from rich.table import Table
