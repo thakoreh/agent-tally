@@ -327,7 +327,7 @@ def summary(by_agent: bool, by_model: bool, by_task: bool, since: str, limit: in
 # ═══════════════════════════════════════════════════════════════════════════
 
 @cli.command()
-@click.option("--format", "format", type=click.Choice(["json", "csv"]), default="json", help="Export format")
+@click.option("--format", "format", type=click.Choice(["json", "csv", "markdown"]), default="json", help="Export format")
 @click.option("--since", "since", default="all", help="Time window")
 @click.option("--output", "-o", "output", default=None, help="Output file (default: stdout)")
 @click.option("--json", "as_json", is_flag=True, help="Shorthand for --format json (overrides --format)")
@@ -364,6 +364,8 @@ def export(format: str, since: str, output: Optional[str], as_json: bool) -> Non
 
     if format == "json":
         data = json_mod.dumps(rows, indent=2)
+    elif format == "markdown":
+        data = _export_markdown(rows)
     else:
         buf = io.StringIO()
         if rows:
@@ -446,6 +448,87 @@ def completion(shell: str, install: bool) -> None:
 def agents() -> None:
     """List supported agents."""
     print_agents_list()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TOP COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.option("--by", "group_by", type=click.Choice(["agent", "model"]), default="agent", help="Group by agent or model")
+@click.option("--since", "since", default="7d", help="Time window")
+@click.option("--limit", "-n", default=10, help="Number of results")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def top(group_by: str, since: str, limit: int, as_json: bool) -> None:
+    """Show top spending agents or models."""
+    storage = Storage()
+    since_dt = _parse_since(since)
+    summaries = storage.summary(since=since_dt, group_by=group_by)
+
+    if not summaries:
+        click.echo("No sessions found for the given time range.")
+        storage.close()
+        return
+
+    summaries = summaries[:limit]
+
+    if as_json:
+        output = [
+            {
+                group_by: row.get("grp_key", "unknown"),
+                "sessions": row.get("session_count", 0),
+                "tokens_in": row.get("total_tokens_in", 0) or 0,
+                "tokens_out": row.get("total_tokens_out", 0) or 0,
+                "total_cost": row.get("total_cost", 0.0) or 0.0,
+                "avg_duration_sec": round(row.get("avg_duration", 0.0) or 0.0, 2),
+            }
+            for row in summaries
+        ]
+        click.echo(json_mod.dumps(output, indent=2))
+    else:
+        from rich.console import Console as RichConsole
+        from rich.table import Table as RichTable
+        from rich import box as rich_box
+
+        rc = RichConsole()
+        table = RichTable(
+            title=f"Top {group_by.capitalize()}s ({since})",
+            box=rich_box.ROUNDED,
+            title_style="bold cyan",
+        )
+        table.add_column("#", justify="right", style="dim", width=3)
+        table.add_column(group_by.capitalize(), style="bold")
+        table.add_column("Sessions", justify="right")
+        table.add_column("Tokens In", justify="right", style="green")
+        table.add_column("Tokens Out", justify="right", style="green")
+        table.add_column("Total Cost", justify="right", style="bold yellow")
+        table.add_column("Avg Duration", justify="right")
+
+        for idx, row in enumerate(summaries, 1):
+            key = row.get("grp_key", "unknown") or "unknown"
+            if len(str(key)) > 40:
+                key = str(key)[:37] + "..."
+            sessions_count = row.get("session_count", 0)
+            tokens_in = row.get("total_tokens_in", 0) or 0
+            tokens_out = row.get("total_tokens_out", 0) or 0
+            cost = row.get("total_cost", 0.0) or 0.0
+            avg_dur = row.get("avg_duration", 0.0) or 0.0
+
+            cost_style = "green" if cost < 5.0 else ("yellow" if cost < 20.0 else "red")
+
+            table.add_row(
+                str(idx),
+                str(key),
+                str(sessions_count),
+                f"{tokens_in:,}" if tokens_in else "-",
+                f"{tokens_out:,}" if tokens_out else "-",
+                f"[{cost_style}]${cost:.4f}[/{cost_style}]",
+                f"{avg_dur:.1f}s" if avg_dur else "-",
+            )
+
+        rc.print(table)
+
+    storage.close()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -544,26 +627,83 @@ def config_pricing() -> None:
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════════════
 
+def _export_markdown(rows: list[dict]) -> str:
+    """Export session data as a Markdown table."""
+    if not rows:
+        return ""
+
+    total_cost = sum(r["cost"] for r in rows)
+    total_in = sum(r["tokens_in"] for r in rows)
+    total_out = sum(r["tokens_out"] for r in rows)
+
+    lines = [
+        "# Agent-Tally Session Export",
+        "",
+        f"**Sessions:** {len(rows)} | **Total Cost:** ${total_cost:.4f} | **Tokens:** {total_in:,} in / {total_out:,} out",
+        "",
+        "| Date | Agent | Model | Tokens In | Tokens Out | Cost | Duration |",
+        "|------|-------|-------|-----------|------------|------|----------|",
+    ]
+
+    for r in rows:
+        date_str = r.get("started_at", "-") or "-"
+        if date_str != "-":
+            date_str = date_str[:16].replace("T", " ")
+        cost_str = f"${r['cost']:.4f}" if r["cost"] > 0 else "-"
+        lines.append(
+            f"| {date_str} | {r['agent']} | {r['model'] or '-'} | "
+            f"{r['tokens_in']:,} | {r['tokens_out']:,} | {cost_str} | "
+            f"{r['duration_sec']:.1f}s |"
+        )
+
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _parse_since(since: str) -> Optional[datetime]:
-    """Parse a time window string into a datetime."""
+    """Parse a time window string into a datetime.
+
+    Supported formats:
+    - 'today', 'yesterday', 'all'
+    - '7d', '30d', '90d' (days)
+    - '1h', '24h', '48h' (hours)
+    - '30m', '5m' (minutes)
+    - ISO date string
+    """
+    import re as _re
+
     now = datetime.now()
 
     if since == "today":
         return now.replace(hour=0, minute=0, second=0, microsecond=0)
     elif since == "yesterday":
         return (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    elif since == "7d":
+    elif since == "all":
+        return None
+
+    # Flexible duration: <number><unit> where unit = d, h, m
+    match = _re.match(r"^(\d+)([dhm])$", since)
+    if match:
+        value = int(match.group(1))
+        unit = match.group(2)
+        if unit == "d":
+            return now - timedelta(days=value)
+        elif unit == "h":
+            return now - timedelta(hours=value)
+        elif unit == "m":
+            return now - timedelta(minutes=value)
+
+    # Legacy aliases
+    if since == "7d":
         return now - timedelta(days=7)
     elif since == "30d":
         return now - timedelta(days=30)
     elif since == "90d":
         return now - timedelta(days=90)
-    elif since == "all":
-        return None
-    else:
-        # Try ISO format
-        try:
-            return datetime.fromisoformat(since)
-        except ValueError:
-            click.echo(f"Warning: couldn't parse '{since}', defaulting to today")
-            return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Try ISO format
+    try:
+        return datetime.fromisoformat(since)
+    except ValueError:
+        click.echo(f"Warning: couldn't parse '{since}', defaulting to today")
+        return now.replace(hour=0, minute=0, second=0, microsecond=0)

@@ -105,10 +105,10 @@ class TestDetectAgentExtended:
     """Extended agent detection tests."""
 
     def test_cursor_binary(self):
-        """Cursor is not in AGENT_MAP, should get generic."""
+        """Cursor is now in AGENT_MAP, should be detected properly."""
         info = detect_agent(["cursor", "fix the code"])
         assert info is not None
-        assert info.agent_type == AgentType.GENERIC
+        assert info.agent_type == AgentType.CURSOR
 
     def test_binary_with_path_prefix(self):
         """Test binary name with full path."""

@@ -145,6 +145,19 @@ AGENT_MAP: dict[str, AgentInfo] = {
             r"[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)",
         ],
     ),
+    "cursor": AgentInfo(
+        agent_type=AgentType.CURSOR,
+        display_name="Cursor",
+        cli_command="cursor",
+        model_pattern=r"model[:\s]+(\S+)",
+        token_patterns=[
+            r"(\d+)\s*tokens?\s*in.*?(\d+).*?tokens?\s*out",
+            r"Tokens:\s*(\d+)\s*in.*?(\d+)\s*out",
+            r"input[:\s]+(\d+).*?output[:\s]+(\d+)",
+            r"[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)",
+            r'"input_tokens"[:\s]+(\d+).*?"output_tokens"[:\s]+(\d+)',
+        ],
+    ),
 }
 
 
