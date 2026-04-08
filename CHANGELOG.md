@@ -5,6 +5,16 @@ All notable changes to agent-tally will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-04-08
+
+### Added
+- **Cursor agent detection** — Cursor is now in AGENT_MAP with full token pattern support
+- **`top` command** — show top spending agents or models with `--by`, `--since`, `--limit`, `--json` options
+- **Markdown export** — `export --format markdown` produces a shareable Markdown table
+- **Flexible `--since` parsing** — supports `1h`, `30m`, `24h`, `7d` style durations alongside existing formats
+- Additional model pricing: glm-5.1, qwen-3-max, qwen-3-plus
+- 33 new tests (226 total)
+
 ## [0.5.0] - 2026-04-07
 
 ### Added

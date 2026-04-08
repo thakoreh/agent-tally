@@ -86,8 +86,11 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     # ── Open source / Chinese providers ────────────────────────
     "glm-5": {"input": 0.10, "output": 0.40},
     "glm-4": {"input": 0.10, "output": 0.40},
+    "glm-5.1": {"input": 0.10, "output": 0.40},
     "qwen-3": {"input": 0.15, "output": 0.60},
     "qwen-2.5-coder": {"input": 0.15, "output": 0.60},
+    "qwen-3-max": {"input": 0.40, "output": 1.20},
+    "qwen-3-plus": {"input": 0.20, "output": 0.60},
     "yi-large": {"input": 0.30, "output": 0.90},
     "dbrx-instruct": {"input": 0.25, "output": 0.50},
     "mixtral-8x7b": {"input": 0.15, "output": 0.30},
