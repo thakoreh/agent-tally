@@ -126,7 +126,8 @@ def budget_set(daily: Optional[float], session_limit: Optional[float], webhook: 
 
 
 @budget.command(name="show")
-def budget_show() -> None:
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def budget_show(as_json: bool = False) -> None:
     """Show current budget configuration and today's spending."""
     from rich.console import Console
     from rich.table import Table
@@ -139,7 +140,24 @@ def budget_show() -> None:
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     sessions = storage.query(since=today, limit=10000)
     daily_total = sum(s.cost for s in sessions)
-    
+
+    if as_json:
+        output = {
+            "daily_limit": manager.config.daily_limit,
+            "session_limit": manager.config.session_limit,
+            "kill_at_100": manager.config.kill_at_100,
+            "warn_at_80": manager.config.warn_at_80,
+            "warn_at_95": manager.config.warn_at_95,
+            "sessions_today": len(sessions),
+            "total_spent_today": round(daily_total, 6),
+        }
+        if manager.config.daily_limit:
+            output["remaining"] = round(manager.config.daily_limit - daily_total, 6)
+            output["pct_used"] = round((daily_total / manager.config.daily_limit) * 100, 2) if manager.config.daily_limit > 0 else 0
+        click.echo(json_mod.dumps(output, indent=2))
+        storage.close()
+        return
+
     console = Console()
     
     # Config table
@@ -621,6 +639,117 @@ def config_pricing() -> None:
         table.add_row(name, f"${p.input:.2f}", f"${p.output:.2f}")
 
     Console().print(table)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# COST ESTIMATE COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.argument("model_name")
+@click.argument("tokens_in", type=int)
+@click.argument("tokens_out", type=int)
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def cost(model_name: str, tokens_in: int, tokens_out: int, as_json: bool) -> None:
+    """Estimate cost for a model given token counts.
+
+    Examples:
+        agent-tally cost claude-sonnet-4 100000 50000
+        agent-tally cost gpt-4o 50000 10000 --json
+    """
+    pricing = PricingConfig()
+    model_pricing = pricing.get(model_name)
+    estimated = model_pricing.cost(tokens_in, tokens_out)
+
+    if as_json:
+        output = {
+            "model": model_name,
+            "resolved_model": model_pricing.name,
+            "input_price_per_million": model_pricing.input,
+            "output_price_per_million": model_pricing.output,
+            "tokens_in": tokens_in,
+            "tokens_out": tokens_out,
+            "estimated_cost_usd": round(estimated, 6),
+        }
+        click.echo(json_mod.dumps(output, indent=2))
+    else:
+        click.echo(f"Model:          {model_pricing.name}")
+        click.echo(f"Input tokens:   {tokens_in:,}  @ ${model_pricing.input:.2f}/M")
+        click.echo(f"Output tokens:  {tokens_out:,}  @ ${model_pricing.output:.2f}/M")
+        click.echo(f"Estimated cost: ${estimated:.6f}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SESSION INSPECT COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command(name="session")
+@click.argument("session_id", type=int)
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def session_inspect(session_id: int, as_json: bool) -> None:
+    """Show details for a specific session.
+
+    Examples:
+        agent-tally session 42
+        agent-tally session 42 --json
+    """
+    storage = Storage()
+    s = storage.get(session_id)
+
+    if not s:
+        click.echo(f"Session {session_id} not found.")
+        storage.close()
+        sys.exit(1)
+
+    # Calculate token rate
+    tokens_per_sec: Optional[float] = None
+    if s.duration_sec and s.duration_sec > 0:
+        tokens_per_sec = (s.tokens_in + s.tokens_out) / s.duration_sec
+
+    if as_json:
+        output = {
+            "id": s.id,
+            "agent": s.agent,
+            "model": s.model,
+            "task_prompt": s.task_prompt,
+            "tokens_in": s.tokens_in,
+            "tokens_out": s.tokens_out,
+            "cost": s.cost,
+            "started_at": s.started_at.isoformat() if s.started_at else None,
+            "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+            "duration_sec": s.duration_sec,
+            "tokens_per_sec": round(tokens_per_sec, 2) if tokens_per_sec else None,
+        }
+        click.echo(json_mod.dumps(output, indent=2))
+    else:
+        from rich.console import Console
+        from rich.table import Table
+        from rich import box
+
+        console = Console()
+        table = Table(
+            title=f"Session #{session_id}",
+            box=box.ROUNDED,
+            title_style="bold cyan",
+        )
+        table.add_column("Field", style="bold")
+        table.add_column("Value")
+
+        table.add_row("Agent", s.agent)
+        table.add_row("Model", s.model or "unknown")
+        table.add_row("Task", s.task_prompt[:100] + "..." if len(s.task_prompt) > 100 else (s.task_prompt or "-"))
+        table.add_row("Tokens In", f"{s.tokens_in:,}")
+        table.add_row("Tokens Out", f"{s.tokens_out:,}")
+        table.add_row("Cost", f"${s.cost:.6f}")
+        table.add_row("Duration", f"{s.duration_sec:.1f}s")
+        if tokens_per_sec is not None:
+            table.add_row("Token Rate", f"{tokens_per_sec:.1f} tokens/sec")
+        table.add_row("Started", s.started_at.strftime("%Y-%m-%d %H:%M:%S") if s.started_at else "-")
+        table.add_row("Ended", s.ended_at.strftime("%Y-%m-%d %H:%M:%S") if s.ended_at else "-")
+
+        console.print(table)
+
+    storage.close()
 
 
 # ═══════════════════════════════════════════════════════════════════════════

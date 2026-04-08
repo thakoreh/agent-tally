@@ -5,6 +5,15 @@ All notable changes to agent-tally will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-04-08
+
+### Added
+- **`cost` command** — quick cost estimation: `agent-tally cost <model> <tokens_in> <tokens_out>` with `--json`
+- **`session` command** — inspect a specific session by ID: `agent-tally session 42` with `--json`
+- **Token rate** — `Session.tokens_per_sec` property computes tokens/second throughput
+- **`budget show --json`** — JSON output for budget status (daily limit, session limit, remaining, pct_used)
+- Version synced across `__init__.py`, `pyproject.toml`, and `setup.py`
+
 ## [0.6.0] - 2026-04-08
 
 ### Added

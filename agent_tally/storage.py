@@ -25,6 +25,13 @@ class Session:
     ended_at: Optional[datetime] = None
     duration_sec: float = 0.0
 
+    @property
+    def tokens_per_sec(self) -> Optional[float]:
+        """Token throughput rate (tokens/second)."""
+        if self.duration_sec and self.duration_sec > 0:
+            return (self.tokens_in + self.tokens_out) / self.duration_sec
+        return None
+
 
 class Storage:
     """SQLite-backed storage for session data."""
