@@ -32,7 +32,9 @@ class ModelPricing:
 DEFAULT_PRICING: dict[str, dict[str, float]] = {
     # ── Anthropic ──────────────────────────────────────────────
     "claude-sonnet-4": {"input": 3.00, "output": 15.00},
+    "claude-sonnet-4.5": {"input": 3.00, "output": 15.00},
     "claude-opus-4": {"input": 15.00, "output": 75.00},
+    "claude-opus-4.5": {"input": 15.00, "output": 75.00},
     "claude-haiku-3.5": {"input": 0.80, "output": 4.00},
     "claude-code": {"input": 3.00, "output": 15.00},
     "claude-3.5-sonnet": {"input": 3.00, "output": 15.00},
@@ -43,14 +45,18 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     # ── OpenAI ─────────────────────────────────────────────────
     "gpt-5.2-codex": {"input": 2.50, "output": 10.00},
     "gpt-5.4": {"input": 2.50, "output": 10.00},
+    "gpt-5.5": {"input": 2.50, "output": 10.00},
     "gpt-5.4-thinking": {"input": 5.00, "output": 20.00},
     "o3-mini": {"input": 1.10, "output": 4.40},
     "o3": {"input": 2.50, "output": 10.00},
     "o4-mini": {"input": 1.10, "output": 4.40},
+    "o4": {"input": 2.50, "output": 10.00},
     "gpt-4o": {"input": 2.50, "output": 10.00},
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
     "gpt-4-turbo": {"input": 10.00, "output": 30.00},
     # ── Google ─────────────────────────────────────────────────
+    "gemini-4.0-pro": {"input": 1.25, "output": 10.00},
+    "gemini-4.0-flash": {"input": 0.15, "output": 0.60},
     "gemini-3.1-flash": {"input": 0.15, "output": 0.60},
     "gemini-3.1-pro": {"input": 1.25, "output": 10.00},
     "gemini-3.1-ultra": {"input": 2.50, "output": 15.00},
@@ -62,13 +68,16 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
     # ── xAI ───────────────────────────────────────────────────
     "grok-4.20": {"input": 3.00, "output": 15.00},
+    "grok-4": {"input": 3.00, "output": 15.00},
     "grok-3": {"input": 0.50, "output": 2.00},
     "grok-3-mini": {"input": 0.30, "output": 1.00},
     "grok-2": {"input": 2.00, "output": 10.00},
     # ── DeepSeek ───────────────────────────────────────────────
     "deepseek-v4": {"input": 0.27, "output": 1.10},
     "deepseek-v4-reasoning": {"input": 0.55, "output": 2.19},
+    "deepseek-v4.5": {"input": 0.27, "output": 1.10},
     "deepseek-v3": {"input": 0.27, "output": 1.10},
+    "deepseek-r2": {"input": 0.55, "output": 2.19},
     "deepseek-r1": {"input": 0.55, "output": 2.19},
     "deepseek-chat": {"input": 0.14, "output": 0.28},
     # ── Meta ───────────────────────────────────────────────────
@@ -77,6 +86,7 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "llama-3.3-70b": {"input": 0.20, "output": 0.80},
     # ── Mistral ────────────────────────────────────────────────
     "mistral-large": {"input": 2.00, "output": 6.00},
+    "mistral-large-2": {"input": 2.00, "output": 6.00},
     "mistral-medium": {"input": 0.40, "output": 1.50},
     "mistral-small": {"input": 0.20, "output": 0.60},
     "codestral": {"input": 0.30, "output": 0.90},
@@ -87,18 +97,53 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "glm-5": {"input": 0.10, "output": 0.40},
     "glm-4": {"input": 0.10, "output": 0.40},
     "glm-5.1": {"input": 0.10, "output": 0.40},
+    "glm-5.2": {"input": 0.10, "output": 0.40},
     "qwen-3": {"input": 0.15, "output": 0.60},
     "qwen-2.5-coder": {"input": 0.15, "output": 0.60},
     "qwen-3-max": {"input": 0.40, "output": 1.20},
     "qwen-3-plus": {"input": 0.20, "output": 0.60},
+    "qwen-3-coder": {"input": 0.15, "output": 0.60},
     "yi-large": {"input": 0.30, "output": 0.90},
     "dbrx-instruct": {"input": 0.25, "output": 0.50},
     "mixtral-8x7b": {"input": 0.15, "output": 0.30},
     "llama-3.1-8b": {"input": 0.05, "output": 0.15},
     "llama-3.1-70b": {"input": 0.20, "output": 0.80},
+    # ── Amazon ───────────────────────────────────────────────────
+    "nova-pro": {"input": 0.80, "output": 3.20},
+    "nova-lite": {"input": 0.06, "output": 0.24},
+    "nova-micro": {"input": 0.035, "output": 0.14},
+    "titan-text-express": {"input": 0.20, "output": 0.60},
+    # ── AI21 ─────────────────────────────────────────────────────
+    "jamba-1.5-large": {"input": 2.00, "output": 8.00},
+    "jamba-1.5-mini": {"input": 0.20, "output": 0.40},
     # ── Cursor ─────────────────────────────────────────────────
     "cursor-small": {"input": 0.15, "output": 0.60},
     "cursor-pro": {"input": 3.00, "output": 15.00},
+}
+
+
+# Provider grouping for organized display
+PROVIDER_GROUPS: dict[str, list[str]] = {
+    "Anthropic": ["claude-sonnet-4", "claude-sonnet-4.5", "claude-opus-4", "claude-opus-4.5",
+                  "claude-haiku-3.5", "claude-code", "claude-3.5-sonnet", "claude-3.5-haiku",
+                  "claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
+    "OpenAI": ["gpt-5.2-codex", "gpt-5.4", "gpt-5.5", "gpt-5.4-thinking", "o3-mini", "o3",
+               "o4-mini", "o4", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+    "Google": ["gemini-4.0-pro", "gemini-4.0-flash", "gemini-3.1-flash", "gemini-3.1-pro",
+              "gemini-3.1-ultra", "gemini-3.5-pro", "gemini-2.5-flash", "gemini-2.5-pro",
+              "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
+    "xAI": ["grok-4.20", "grok-4", "grok-3", "grok-3-mini", "grok-2"],
+    "DeepSeek": ["deepseek-v4", "deepseek-v4-reasoning", "deepseek-v4.5", "deepseek-v3",
+                 "deepseek-r2", "deepseek-r1", "deepseek-chat"],
+    "Meta": ["llama-4-maverick", "llama-4-scout", "llama-3.3-70b"],
+    "Mistral": ["mistral-large", "mistral-large-2", "mistral-medium", "mistral-small", "codestral"],
+    "Cohere": ["command-r-plus", "command-r"],
+    "Chinese/Z.ai": ["glm-5", "glm-4", "glm-5.1", "glm-5.2", "qwen-3", "qwen-2.5-coder",
+                     "qwen-3-max", "qwen-3-plus", "qwen-3-coder", "yi-large"],
+    "Amazon": ["nova-pro", "nova-lite", "nova-micro", "titan-text-express"],
+    "AI21": ["jamba-1.5-large", "jamba-1.5-mini"],
+    "Other OSS": ["dbrx-instruct", "mixtral-8x7b", "llama-3.1-8b", "llama-3.1-70b"],
+    "Cursor": ["cursor-small", "cursor-pro"],
 }
 
 
@@ -173,6 +218,15 @@ class PricingConfig:
     def all_models(self) -> dict[str, ModelPricing]:
         """Return all configured models."""
         return dict(self._models)
+
+    def models_by_provider(self) -> dict[str, list[tuple[str, ModelPricing]]]:
+        """Return models organized by provider."""
+        result: dict[str, list[tuple[str, ModelPricing]]] = {}
+        for provider, model_names in PROVIDER_GROUPS.items():
+            models = [(name, self._models[name]) for name in model_names if name in self._models]
+            if models:
+                result[provider] = models
+        return result
 
     def estimate(self, model_name: str, tokens_in: int, tokens_out: int) -> float:
         """Estimate cost for given model and token usage."""

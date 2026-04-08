@@ -160,7 +160,9 @@ class Storage:
         group_by: str = "agent",
     ) -> list[dict]:
         """Get aggregated summary."""
-        if group_by == "agent":
+        if group_by == "date":
+            col = "DATE(started_at)"
+        elif group_by == "agent":
             col = "agent"
         elif group_by == "model":
             col = "model"
@@ -201,6 +203,25 @@ class Storage:
             ended_at=datetime.fromisoformat(row["ended_at"]) if row["ended_at"] else None,
             duration_sec=row["duration_sec"],
         )
+
+    def delete(self, session_id: int) -> bool:
+        """Delete a session by ID. Returns True if deleted."""
+        cursor = self.conn.execute("DELETE FROM sessions WHERE id=?", (session_id,))
+        self.conn.commit()
+        return cursor.rowcount > 0
+
+    def delete_all(self, before: Optional[datetime] = None) -> int:
+        """Delete all sessions, optionally only those before a given date.
+        Returns count of deleted rows."""
+        if before:
+            cursor = self.conn.execute(
+                "DELETE FROM sessions WHERE started_at < ?",
+                (before.isoformat(),),
+            )
+        else:
+            cursor = self.conn.execute("DELETE FROM sessions")
+        self.conn.commit()
+        return cursor.rowcount
 
     def close(self) -> None:
         if self._conn:

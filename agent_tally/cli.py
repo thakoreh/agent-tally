@@ -283,10 +283,11 @@ def history(limit: int, agent: Optional[str], since: str, min_cost: Optional[flo
 @click.option("--by-agent", "by_agent", is_flag=True, help="Group by agent")
 @click.option("--by-model", "by_model", is_flag=True, help="Group by model")
 @click.option("--by-task", "by_task", is_flag=True, help="Group by task")
+@click.option("--by-date", "by_date", is_flag=True, help="Group by date")
 @click.option("--since", "since", default="today", help="Time window: 'today', '7d', '30d', 'all', or ISO date")
 @click.option("--limit", "limit", default=50, help="Max results")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON for programmatic use")
-def summary(by_agent: bool, by_model: bool, by_task: bool, since: str, limit: int, as_json: bool) -> None:
+def summary(by_agent: bool, by_model: bool, by_task: bool, by_date: bool, since: str, limit: int, as_json: bool) -> None:
     """Show cost summary."""
     storage = Storage()
 
@@ -299,6 +300,8 @@ def summary(by_agent: bool, by_model: bool, by_task: bool, since: str, limit: in
         group_by = "model"
     elif by_task:
         group_by = "task"
+    elif by_date:
+        group_by = "date"
     else:
         group_by = "agent"
 
@@ -621,7 +624,8 @@ def config_set(model_name: str, direction: str, price: float) -> None:
 
 
 @config.command(name="pricing")
-def config_pricing() -> None:
+@click.option("--by-provider", "by_provider", is_flag=True, help="Group models by provider")
+def config_pricing(by_provider: bool) -> None:
     """Show current pricing for all models."""
     pricing = PricingConfig()
     from rich.console import Console
@@ -630,15 +634,33 @@ def config_pricing() -> None:
 
     console = Console()
 
-    table = Table(title="Model Pricing", box=box.ROUNDED, title_style="bold cyan")
-    table.add_column("Model", style="bold")
-    table.add_column("Input ($/M)", justify="right", style="green")
-    table.add_column("Output ($/M)", justify="right", style="yellow")
+    if by_provider:
+        for provider, models in pricing.models_by_provider().items():
+            table = Table(
+                title=provider,
+                box=box.ROUNDED,
+                title_style="bold cyan",
+                show_header=True,
+            )
+            table.add_column("Model", style="bold")
+            table.add_column("Input ($/M)", justify="right", style="green")
+            table.add_column("Output ($/M)", justify="right", style="yellow")
 
-    for name, p in sorted(pricing.all_models().items()):
-        table.add_row(name, f"${p.input:.2f}", f"${p.output:.2f}")
+            for name, p in models:
+                table.add_row(name, f"${p.input:.2f}", f"${p.output:.2f}")
 
-    Console().print(table)
+            console.print(table)
+            console.print()
+    else:
+        table = Table(title="Model Pricing", box=box.ROUNDED, title_style="bold cyan")
+        table.add_column("Model", style="bold")
+        table.add_column("Input ($/M)", justify="right", style="green")
+        table.add_column("Output ($/M)", justify="right", style="yellow")
+
+        for name, p in sorted(pricing.all_models().items()):
+            table.add_row(name, f"${p.input:.2f}", f"${p.output:.2f}")
+
+        console.print(table)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -749,6 +771,81 @@ def session_inspect(session_id: int, as_json: bool) -> None:
 
         console.print(table)
 
+    storage.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# DELETE / RESET COMMANDS
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.argument("session_ids", nargs=-1, required=True, type=int)
+@click.option("--force", is_flag=True, help="Skip confirmation")
+def delete(session_ids: tuple[int, ...], force: bool) -> None:
+    """Delete one or more sessions by ID.
+
+    Examples:
+        agent-tally delete 42
+        agent-tally delete 42 43 44 --force
+    """
+    storage = Storage()
+    deleted = 0
+    not_found = []
+
+    if not force:
+        ids_str = ", ".join(str(i) for i in session_ids)
+        if not click.confirm(f"Delete session(s) {ids_str}?"):
+            click.echo("Cancelled.")
+            storage.close()
+            return
+
+    for sid in session_ids:
+        session = storage.get(sid)
+        if session:
+            storage.delete(sid)
+            deleted += 1
+        else:
+            not_found.append(sid)
+
+    click.echo(f"Deleted {deleted} session(s).")
+    if not_found:
+        click.echo(f"Not found: {', '.join(str(i) for i in not_found)}")
+    storage.close()
+
+
+@cli.command()
+@click.option("--force", is_flag=True, help="Skip confirmation")
+@click.option("--before", default=None, help="Only delete sessions before this date (ISO format)")
+def reset(force: bool, before: Optional[str]) -> None:
+    """Delete all session history.
+
+    Examples:
+        agent-tally reset
+        agent-tally reset --before 2026-01-01
+        agent-tally reset --force
+    """
+    storage = Storage()
+    since_dt = datetime.fromisoformat(before) if before else None
+    sessions = storage.query(since=None, limit=100000)
+
+    if since_dt:
+        sessions = [s for s in sessions if s.started_at and s.started_at < since_dt]
+
+    if not sessions:
+        click.echo("No sessions to delete.")
+        storage.close()
+        return
+
+    if not force:
+        total_cost = sum(s.cost for s in sessions)
+        click.echo(f"About to delete {len(sessions)} sessions (total: ${total_cost:.4f})")
+        if not click.confirm("Proceed?"):
+            click.echo("Cancelled.")
+            storage.close()
+            return
+
+    count = storage.delete_all(before=since_dt)
+    click.echo(f"Deleted {count} session(s).")
     storage.close()
 
 

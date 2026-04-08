@@ -66,6 +66,14 @@ AGENT_MAP: dict[str, AgentInfo] = {
             r'\|\s*(\d+)\s*\|\s*(\d+)\s*\|.*tokens',
             # SSE/data format: {"tokens": {"input": N, "output": M}}
             r'"tokens"\s*:\s*\{[^}]*"input"\s*:\s*(\d+)[^}]*"output"\s*:\s*(\d+)',
+            # Aider format: "Cost: $0.42 (1.2k tokens)
+            r'[Cc]ost[:\s]+\$[\d.]+\s*\((\d+).*?tokens?\)',
+            # Logfmt: tokens_in=1234 tokens_out=5678
+            r'tokens_in[:\s=]+(\d+).*?tokens_out[:\s=]+(\d+)',
+            # Prometheus metrics style: llm_tokens_input 1234 llm_tokens_output 5678
+            r'llm_tokens_input[:\s]+(\d+).*?llm_tokens_output[:\s]+(\d+)',
+            # NDJSON streaming: {"t": "input", "c": N} / {"t": "output", "c": M}
+            r'"t"\s*:\s*"input".*?"c"\s*:\s*(\d+).*?"t"\s*:\s*"output".*?"c"\s*:\s*(\d+)',
         ],
     ),
     "codex": AgentInfo(
