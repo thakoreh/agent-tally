@@ -5,6 +5,17 @@ All notable changes to agent-tally will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-04-09
+
+### Added
+- **`detect_provider()` utility** — returns provider name from model name using PROVIDER_GROUPS mapping with fuzzy matching
+- **Session tagging** — `tags` column on sessions, `--tag` on `run`, `--tags` filter on `history`/`summary`, `agent-tally tag <id> <tag>` command
+- **`cost-batch` command** — estimate costs from CSV files (`model,tokens_in,tokens_out`) with `--format json/csv/table`
+- **`summary --by-hour`** — group sessions by hour of day (0-23) to identify cost patterns
+- **`agents --json`** — list supported agents as JSON
+- **DB migration** — automatic `ALTER TABLE` for `tags` column on existing databases
+- **22 new tests** — provider detection, tagging edge cases, batch cost validation, by-hour grouping
+
 ## [0.7.0] - 2026-04-08
 
 ### Added
