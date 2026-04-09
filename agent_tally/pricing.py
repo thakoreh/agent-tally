@@ -147,6 +147,28 @@ PROVIDER_GROUPS: dict[str, list[str]] = {
 }
 
 
+def detect_provider(model_name: str) -> str:
+    """Return the provider name for a given model name.
+
+    Uses the PROVIDER_GROUPS mapping. Returns 'Unknown' for unrecognized models.
+    Performs case-insensitive matching and partial prefix matching.
+    """
+    normalized = model_name.lower().strip()
+    if not normalized:
+        return "Unknown"
+
+    for provider, models in PROVIDER_GROUPS.items():
+        # Exact match (case-insensitive)
+        if normalized in (m.lower() for m in models):
+            return provider
+        # Partial / prefix match
+        for m in models:
+            if m.lower().startswith(normalized) or normalized.startswith(m.lower()):
+                return provider
+
+    return "Unknown"
+
+
 class PricingConfig:
     """Manages model pricing configuration."""
 

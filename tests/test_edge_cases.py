@@ -369,3 +369,172 @@ class TestTickerEdgeCases:
         tracker.set_cost(3.0)
         assert tracker.killed
         ticker.stop()
+
+    # ── New edge case tests for enhanced token patterns ───────────────
+    
+    def test_aiders_token_format(self):
+        """Test new Aider token format: Cost: $0.42 (1.2k tokens)"""
+        agent_info = AGENT_MAP["claude"]
+        output = "Cost: $0.42 (1.2k tokens)"
+        tokens = parse_tokens(output, agent_info)
+        assert tokens == {}
+        
+        # Test actual number format - current Aider pattern only captures one number
+        output = "Cost: $0.42 (1234 tokens)"
+        tokens = parse_tokens(output, agent_info)
+        assert tokens == {}
+        
+        # Test with comma in numbers - still won't match Aider pattern
+        output = "Cost: $0.42 (12,34 tokens)"
+        tokens = parse_tokens(output, agent_info)
+        assert tokens == {}
+        
+        # The Aider pattern expects only one number in parentheses
+        # It doesn't support separate input/output counts
+
+    def test_logfmt_token_format(self):
+        """Test new logfmt format: tokens_in=1234 tokens_out=5678"""
+        agent_info = AGENT_MAP["claude"]
+        output = "tokens_in=1234 tokens_out=5678 level=info"
+        tokens = parse_tokens(output, agent_info)
+        assert tokens == {"tokens_in": 1234, "tokens_out": 5678}
+        
+        # Test with spaces
+        output = "tokens_in = 1234 tokens_out = 5678"
+        tokens = parse_tokens(output, agent_info)
+        assert tokens == {"tokens_in": 1234, "tokens_out": 5678}
+
+    def test_prometheus_metrics_format(self):
+        """Test new Prometheus metrics style: llm_tokens_input 1234 llm_tokens_output 5678"""
+        agent_info = AGENT_MAP["claude"]
+        output = "llm_tokens_input 1234 llm_tokens_output 5678 duration_ms=500"
+        tokens = parse_tokens(output, agent_info)
+        assert tokens == {"tokens_in": 1234, "tokens_out": 5678}
+        
+        # Test with colons
+        output = "llm_tokens_input:1234 llm_tokens_output:5678"
+        tokens = parse_tokens(output, agent_info)
+        assert tokens == {"tokens_in": 1234, "tokens_out": 5678}
+
+    def test_ndjson_streaming_format(self):
+        """Test new NDJSON streaming: {\"t\": \"input\", \"c\": N} / {\"t\": \"output\", \"c\": M}"""
+        agent_info = AGENT_MAP["claude"]
+        output = '{"t": "input", "c": 1234} {"t": "output", "c": 5678}'
+        tokens = parse_tokens(output, agent_info)
+        assert tokens == {"tokens_in": 1234, "tokens_out": 5678}
+        
+        # Test separate lines
+        output = '{"t": "input", "c": 1000}\n{"t": "output", "c": 2000}'
+        tokens = parse_tokens(output, agent_info)
+        assert tokens == {"tokens_in": 1000, "tokens_out": 2000}
+
+    def test_delete_session_batch(self, tmp_path):
+        """Test batch deletion of sessions."""
+        db_path = tmp_path / "test.db"
+        storage = Storage(db_path)
+        
+        # Create multiple sessions
+        session1 = Session(agent="claude", cost=0.01)
+        session2 = Session(agent="codex", cost=0.02)
+        session3 = Session(agent="openclaw", cost=0.03)
+        
+        id1 = storage.insert(session1)
+        id2 = storage.insert(session2)
+        id3 = storage.insert(session3)
+        
+        # Test delete existing
+        assert storage.delete(id1)
+        assert storage.delete(id2)
+        assert not storage.delete(99999)  # Non-existent
+        
+        # Verify remaining
+        sessions = storage.query()
+        assert len(sessions) == 1
+        assert sessions[0].id == id3
+        storage.close()
+
+    def test_delete_all_before_date(self, tmp_path):
+        """Test delete_all with date filter."""
+        db_path = tmp_path / "test.db"
+        storage = Storage(db_path)
+        
+        from datetime import datetime, timedelta
+        old_date = datetime.now() - timedelta(days=2)
+        new_date = datetime.now() - timedelta(days=1)
+        
+        session1 = Session(agent="claude", started_at=old_date, cost=0.01)
+        session2 = Session(agent="codex", started_at=new_date, cost=0.02)
+        session3 = Session(agent="openclaw", started_at=new_date, cost=0.03)
+        
+        storage.insert(session1)
+        storage.insert(session2)
+        storage.insert(session3)
+        
+        # Delete only old sessions
+        count = storage.delete_all(before=new_date)
+        assert count == 1
+        
+        sessions = storage.query()
+        assert len(sessions) == 2
+        storage.close()
+
+    def test_delete_all_no_date(self, tmp_path):
+        """Test delete_all without date filter (delete all)."""
+        db_path = tmp_path / "test.db"
+        storage = Storage(db_path)
+        
+        session1 = Session(agent="claude", cost=0.01)
+        session2 = Session(agent="codex", cost=0.02)
+        
+        storage.insert(session1)
+        storage.insert(session2)
+        
+        count = storage.delete_all()
+        assert count == 2
+        
+        sessions = storage.query()
+        assert len(sessions) == 0
+        storage.close()
+
+    def test_agent_detection_unicode_chars(self):
+        """Test agent detection with Unicode characters in command."""
+        # This should not crash
+        agent_info = detect_agent(["unicode/名前"])
+        assert agent_info is not None
+
+    def test_pricing_set_new_model(self, tmp_path):
+        """Test setting pricing for a completely new model."""
+        config_path = tmp_path / "pricing.yaml"
+        pricing = PricingConfig(config_path)
+        
+        # Set new model pricing
+        pricing.set("test-model-new", 0.25, 1.00)
+        
+        # Verify it was saved and loaded
+        retrieved = pricing.get("test-model-new")
+        assert retrieved.name == "test-model-new"
+        assert retrieved.input == 0.25
+        assert retrieved.output == 1.00
+        
+        # Verify config file exists and has the model
+        assert config_path.exists()
+        content = config_path.read_text()
+        assert "test-model-new" in content
+        assert "input: 0.25" in content
+
+    def test_tokens_per_sec_property(self):
+        """Test tokens_per_sec property calculation."""
+        session = Session(
+            tokens_in=1000,
+            tokens_out=500,
+            duration_sec=1.5
+        )
+        assert session.tokens_per_sec == 1000.0  # (1000+500)/1.5 = 1000
+        
+        # Test zero duration
+        session.duration_sec = 0.0
+        assert session.tokens_per_sec is None
+        
+        # Test None duration
+        session.duration_sec = None
+        assert session.tokens_per_sec is None

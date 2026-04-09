@@ -197,6 +197,7 @@ class AgentWrapper:
                     self.notifier.alert_from_status(status, str(self.session.id))
 
     def _print_summary(self) -> None:
+        """Print final session summary."""
         """Print a brief cost summary after the agent finishes."""
         cost_str = f"${self.session.cost:.4f}" if self.session.cost > 0 else "N/A"
         tokens_str = (

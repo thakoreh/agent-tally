@@ -23,7 +23,7 @@ class Alert:
     threshold: str = ""  # "80", "95", "100"
     timestamp: datetime = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.timestamp is None:
             self.timestamp = datetime.now()
 
@@ -40,12 +40,13 @@ class Notifier:
         self,
         webhook_url: Optional[str] = None,
         log_file: Optional[Path] = None,
-    ):
+    ) -> None:
         self.webhook_url = webhook_url
         self.log_file = log_file
         self._sent_alerts: set = set()  # Dedupe alerts
     
     def send(self, alert: Alert) -> bool:
+        """Send an alert through all configured channels."""
         """Send an alert through all configured channels."""
         # Dedupe
         alert_key = f"{alert.session_id}:{alert.budget_type}:{alert.threshold}"
@@ -65,6 +66,7 @@ class Notifier:
     
     def _log_to_file(self, alert: Alert) -> None:
         """Log alert to file."""
+        """Log alert to file."""
         try:
             self.log_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self.log_file, "a") as f:
@@ -74,6 +76,7 @@ class Notifier:
             pass  # Don't fail on logging errors
     
     def _send_webhook(self, alert: Alert) -> bool:
+        """Send alert to webhook URL."""
         """Send alert to webhook URL."""
         if not self.webhook_url:
             return False
@@ -87,6 +90,7 @@ class Notifier:
             return self._send_generic_webhook(alert)
     
     def _send_discord(self, alert: Alert) -> bool:
+        """Send to Discord webhook."""
         """Send to Discord webhook."""
         color = {
             "info": 3447003,  # Blue
@@ -117,6 +121,7 @@ class Notifier:
         return self._post_json(self.webhook_url, payload)
     
     def _send_slack(self, alert: Alert) -> bool:
+        """Send to Slack webhook."""
         """Send to Slack webhook."""
         color = {
             "info": "#36a64f",
@@ -157,6 +162,7 @@ class Notifier:
     
     def _send_generic_webhook(self, alert: Alert) -> bool:
         """Send to generic webhook."""
+        """Send to generic webhook."""
         payload = {
             "level": alert.level,
             "message": alert.message,
@@ -170,6 +176,7 @@ class Notifier:
         return self._post_json(self.webhook_url, payload)
     
     def _post_json(self, url: str, payload: dict) -> bool:
+        """POST JSON to URL."""
         """POST JSON to URL."""
         try:
             data = json.dumps(payload).encode("utf-8")
@@ -189,6 +196,7 @@ class Notifier:
         status: BudgetStatus,
         session_id: str,
     ) -> List[Alert]:
+        """Create alerts from budget status."""
         """Create alerts from budget status."""
         alerts = []
         
