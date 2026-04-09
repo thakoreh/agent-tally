@@ -41,7 +41,8 @@ def cli(ctx: click.Context, version: bool = False) -> None:
 
 @cli.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument("agent_args", nargs=-1, required=True)
-def run(agent_args: tuple[str, ...]) -> None:
+@click.option("--tag", "tags", multiple=True, help="Tag this session")
+def run(agent_args: tuple[str, ...], tags: tuple[str, ...]) -> None:
     """
     Wrap an agent command and track it with real-time cost display.
     
@@ -55,6 +56,8 @@ def run(agent_args: tuple[str, ...]) -> None:
     from .wrapper import AgentWrapper
 
     wrapper = AgentWrapper(list(agent_args))
+    if tags:
+        wrapper.tags = list(tags)
     return_code = wrapper.run()
     sys.exit(return_code)
 
@@ -237,12 +240,13 @@ def dashboard() -> None:
 @click.option("--agent", "-a", default=None, help="Filter by agent name")
 @click.option("--since", default="7d", help="Time window: 'today', '7d', '30d', 'all', or ISO date")
 @click.option("--min-cost", default=None, type=float, help="Minimum cost to show (USD)")
+@click.option("--tags", default=None, help="Filter by tags (comma-separated)")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-def history(limit: int, agent: Optional[str], since: str, min_cost: Optional[float], as_json: bool) -> None:
+def history(limit: int, agent: Optional[str], since: str, min_cost: Optional[float], tags: Optional[str], as_json: bool) -> None:
     """Show past session costs chronologically."""
     storage = Storage()
     since_dt = _parse_since(since)
-    sessions = storage.query(agent=agent, since=since_dt, limit=limit)
+    sessions = storage.query(agent=agent, since=since_dt, limit=limit, tags=tags)
 
     if min_cost is not None:
         sessions = [s for s in sessions if s.cost >= min_cost]
@@ -284,15 +288,42 @@ def history(limit: int, agent: Optional[str], since: str, min_cost: Optional[flo
 @click.option("--by-model", "by_model", is_flag=True, help="Group by model")
 @click.option("--by-task", "by_task", is_flag=True, help="Group by task")
 @click.option("--by-date", "by_date", is_flag=True, help="Group by date")
+@click.option("--by-hour", "by_hour", is_flag=True, help="Group by hour of day")
 @click.option("--since", "since", default="today", help="Time window: 'today', '7d', '30d', 'all', or ISO date")
 @click.option("--limit", "limit", default=50, help="Max results")
+@click.option("--tags", default=None, help="Filter by tags (comma-separated)")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON for programmatic use")
-def summary(by_agent: bool, by_model: bool, by_task: bool, by_date: bool, since: str, limit: int, as_json: bool) -> None:
+def summary(by_agent: bool, by_model: bool, by_task: bool, by_date: bool, by_hour: bool, since: str, limit: int, tags: Optional[str], as_json: bool) -> None:
     """Show cost summary."""
     storage = Storage()
-
-    # Parse time window
     since_dt = _parse_since(since)
+
+    if by_hour:
+        summaries = storage.summary_by_hour(since=since_dt)
+        if as_json:
+            output = {
+                "summary": [{"hour": r["hour"], "sessions": r["session_count"], "total_cost": r["total_cost"] or 0.0} for r in summaries],
+                "since": since,
+                "group_by": "hour",
+            }
+            click.echo(json_mod.dumps(output, indent=2))
+        else:
+            if summaries:
+                from rich.console import Console as RichConsole
+                from rich.table import Table as RichTable
+                from rich import box as rich_box
+                rc = RichConsole()
+                table = RichTable(title=f"Cost by Hour ({since})", box=rich_box.ROUNDED, title_style="bold cyan")
+                table.add_column("Hour", justify="right")
+                table.add_column("Sessions", justify="right")
+                table.add_column("Total Cost", justify="right", style="bold yellow")
+                for r in summaries:
+                    table.add_row(f"{r['hour']:02d}:00", str(r['session_count']), f"${r['total_cost'] or 0:.4f}")
+                rc.print(table)
+            else:
+                click.echo("No sessions found for the given time range.")
+        storage.close()
+        return
 
     if by_agent:
         group_by = "agent"
@@ -466,9 +497,14 @@ def completion(shell: str, install: bool) -> None:
 
 
 @cli.command()
-def agents() -> None:
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def agents(as_json: bool = False) -> None:
     """List supported agents."""
-    print_agents_list()
+    if as_json:
+        output = {name: {"display": info["display_name"], "command": info["command"]} for name, info in AGENT_MAP.items()}
+        click.echo(json_mod.dumps(output, indent=2))
+    else:
+        print_agents_list()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -847,6 +883,95 @@ def reset(force: bool, before: Optional[str]) -> None:
     count = storage.delete_all(before=since_dt)
     click.echo(f"Deleted {count} session(s).")
     storage.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TAG COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.argument("session_id", type=int)
+@click.argument("tag")
+def tag(session_id: int, tag: str) -> None:
+    """Add a tag to a session. E.g.: agent-tally tag 42 production"""
+    storage = Storage()
+    if storage.tag_session(session_id, tag):
+        session = storage.get(session_id)
+        click.echo(f"Tagged session {session_id} with '{tag}'. Tags: {session.tags}")
+    else:
+        click.echo(f"Session {session_id} not found.")
+        sys.exit(1)
+    storage.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# COST BATCH COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command("cost-batch")
+@click.argument("csv_file", type=click.Path(exists=True))
+@click.option("--format", "fmt", type=click.Choice(["json", "csv", "table"]), default="table", help="Output format")
+def cost_batch(csv_file: str, fmt: str) -> None:
+    """Estimate costs from a CSV file with columns: model,tokens_in,tokens_out.
+
+    E.g.: agent-tally cost-batch batch.csv --format json
+    """
+    import csv as csv_mod
+    import io
+
+    pricing = PricingConfig()
+    results = []
+    total_cost = 0.0
+
+    with open(csv_file, newline="") as f:
+        reader = csv_mod.DictReader(f)
+        for i, row in enumerate(reader, 1):
+            model = row.get("model", "").strip()
+            try:
+                tokens_in = int(row.get("tokens_in", "0"))
+            except (ValueError, TypeError):
+                tokens_in = 0
+            try:
+                tokens_out = int(row.get("tokens_out", "0"))
+            except (ValueError, TypeError):
+                tokens_out = 0
+
+            if not model:
+                continue
+
+            cost = pricing.estimate(model, tokens_in, tokens_out)
+            total_cost += cost
+            results.append({"row": i, "model": model, "tokens_in": tokens_in, "tokens_out": tokens_out, "cost": round(cost, 6)})
+
+    if not results:
+        click.echo("No valid rows found in CSV.")
+        return
+
+    if fmt == "json":
+        output = {"rows": results, "total_cost": round(total_cost, 6), "row_count": len(results)}
+        click.echo(json_mod.dumps(output, indent=2))
+    elif fmt == "csv":
+        buf = io.StringIO()
+        writer = csv_mod.DictWriter(buf, fieldnames=["row", "model", "tokens_in", "tokens_out", "cost"])
+        writer.writeheader()
+        writer.writerows(results)
+        buf.write(f"# Total: {total_cost:.6f}\n")
+        click.echo(buf.getvalue())
+    else:
+        from rich.console import Console as RichConsole
+        from rich.table import Table as RichTable
+        from rich import box as rich_box
+        rc = RichConsole()
+        table = RichTable(title=f"Batch Cost Estimation ({len(results)} rows)", box=rich_box.ROUNDED, title_style="bold cyan")
+        table.add_column("#", justify="right", width=4)
+        table.add_column("Model")
+        table.add_column("Tokens In", justify="right", style="green")
+        table.add_column("Tokens Out", justify="right", style="green")
+        table.add_column("Cost", justify="right", style="bold yellow")
+        for r in results:
+            table.add_row(str(r["row"]), r["model"], f"{r['tokens_in']:,}", f"{r['tokens_out']:,}", f"${r['cost']:.6f}")
+        table.add_row("", "TOTAL", "", "", f"[bold]${total_cost:.6f}[/bold]")
+        rc.print(table)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

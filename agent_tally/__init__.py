@@ -8,7 +8,7 @@ from .ticker import CostTicker, IncrementalCostTracker
 from .notifier import Notifier, Alert
 from .dashboard import Dashboard
 from .storage import Storage, Session
-from .pricing import PricingConfig
+from .pricing import PricingConfig, detect_provider
 from .detector import detect_agent, parse_tokens, parse_model
 
 __all__ = [
@@ -26,6 +26,7 @@ __all__ = [
     "Storage",
     "Session",
     "PricingConfig",
+    "detect_provider",
     "detect_agent",
     "parse_tokens",
     "parse_model",

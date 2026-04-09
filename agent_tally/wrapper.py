@@ -37,10 +37,12 @@ class AgentWrapper:
         self.budget_manager = budget_manager or BudgetManager()
         self.notifier = notifier or (Notifier(webhook_url=self.budget_manager.config.webhook_url) if self.budget_manager.config.webhook_url else None)
         self.enable_ticker = enable_ticker
+        self.tags: list[str] = []
 
         self.session = Session(
             agent=self.agent_info.display_name,
             started_at=datetime.now(),
+            tags=",".join(self.tags) if self.tags else "",
         )
         self.session.id = self.storage.insert(self.session)
 

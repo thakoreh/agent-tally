@@ -24,6 +24,7 @@ class Session:
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
     duration_sec: float = 0.0
+    tags: str = ""
 
     @property
     def tokens_per_sec(self) -> Optional[float]:
@@ -41,6 +42,7 @@ class Storage:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn: Optional[sqlite3.Connection] = None
         self._ensure_table()
+        self._migrate()
 
     @property
     def conn(self) -> sqlite3.Connection:
@@ -62,10 +64,21 @@ class Storage:
                 cost REAL DEFAULT 0.0,
                 started_at TIMESTAMP,
                 ended_at TIMESTAMP,
-                duration_sec REAL DEFAULT 0.0
+                duration_sec REAL DEFAULT 0.0,
+                tags TEXT DEFAULT ''
             )
         """)
         conn.commit()
+        conn.close()
+
+    def _migrate(self) -> None:
+        """Add columns added in later versions."""
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            conn.execute("SELECT tags FROM sessions LIMIT 0")
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE sessions ADD COLUMN tags TEXT DEFAULT ''")
+            conn.commit()
         conn.close()
 
     def insert(self, session: Session) -> int:
@@ -82,10 +95,11 @@ class Storage:
                 started_at=session.started_at,
                 ended_at=session.ended_at,
                 duration_sec=session.duration_sec,
+                tags=session.tags,
             )
         cursor = self.conn.execute(
-            """INSERT INTO sessions (agent, model, task_prompt, tokens_in, tokens_out, cost, started_at, ended_at, duration_sec)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO sessions (agent, model, task_prompt, tokens_in, tokens_out, cost, started_at, ended_at, duration_sec, tags)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 session.agent,
                 session.model,
@@ -96,6 +110,7 @@ class Storage:
                 session.started_at.isoformat() if session.started_at else None,
                 session.ended_at.isoformat() if session.ended_at else None,
                 session.duration_sec,
+                session.tags,
             ),
         )
         self.conn.commit()
@@ -127,12 +142,27 @@ class Storage:
             return None
         return self._row_to_session(row)
 
+    def tag_session(self, session_id: int, tag: str) -> bool:
+        """Add a tag to a session. Returns True if updated."""
+        session = self.get(session_id)
+        if session is None:
+            return False
+        existing = session.tags.split(",") if session.tags else []
+        existing = [t.strip() for t in existing if t.strip()]
+        if tag not in existing:
+            existing.append(tag)
+        new_tags = ",".join(existing)
+        self.conn.execute("UPDATE sessions SET tags=? WHERE id=?", (new_tags, session_id))
+        self.conn.commit()
+        return True
+
     def query(
         self,
         agent: Optional[str] = None,
         since: Optional[datetime] = None,
         until: Optional[datetime] = None,
         limit: int = 100,
+        tags: Optional[str] = None,
     ) -> list[Session]:
         """Query sessions with optional filters."""
         query = "SELECT * FROM sessions WHERE 1=1"
@@ -147,6 +177,12 @@ class Storage:
         if until:
             query += " AND started_at <= ?"
             params.append(until.isoformat())
+        if tags:
+            for t in tags.split(","):
+                t = t.strip()
+                if t:
+                    query += " AND (tags = ? OR tags LIKE ? OR tags LIKE ?)"
+                    params.extend([t, t + ",%", "%," + t])
 
         query += " ORDER BY started_at DESC LIMIT ?"
         params.append(limit)
@@ -202,7 +238,29 @@ class Storage:
             started_at=datetime.fromisoformat(row["started_at"]) if row["started_at"] else None,
             ended_at=datetime.fromisoformat(row["ended_at"]) if row["ended_at"] else None,
             duration_sec=row["duration_sec"],
+            tags=row["tags"] if "tags" in row.keys() else "",
         )
+
+    def summary_by_hour(
+        self,
+        since: Optional[datetime] = None,
+    ) -> list[dict]:
+        """Get cost summary grouped by hour of day (0-23)."""
+        query = """
+            SELECT CAST(strftime('%H', started_at) AS INTEGER) as hour,
+                   COUNT(*) as session_count,
+                   SUM(tokens_in) as total_tokens_in,
+                   SUM(tokens_out) as total_tokens_out,
+                   SUM(cost) as total_cost
+            FROM sessions WHERE 1=1
+        """
+        params: list = []
+        if since:
+            query += " AND started_at >= ?"
+            params.append(since.isoformat())
+        query += " GROUP BY hour ORDER BY hour"
+        rows = self.conn.execute(query, params).fetchall()
+        return [dict(r) for r in rows]
 
     def delete(self, session_id: int) -> bool:
         """Delete a session by ID. Returns True if deleted."""
