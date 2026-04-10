@@ -5,6 +5,34 @@ All notable changes to agent-tally will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-04-09
+
+### Added
+- **Enhanced token detection patterns** — 12 new regex patterns for modern LLM output formats:
+  - Anthropic streaming events (`message_start`/`message_delta` with usage blocks)
+  - AWS Bedrock format (`inputTokenCount`/`outputTokenCount`)
+  - Vertex AI (`totalTokenCount`/`candidatesTokenCount`)
+  - Thinking/reasoning tokens (`thinking_tokens: N, output_tokens: M`)
+  - LiteLLM format (`prompt_tokens=X, completion_tokens=Y`)
+  - Slash format (`1234/5678 tokens`)
+  - Bracket format (`[1234 in] [5678 out]`)
+  - 65+ comprehensive test cases covering all edge cases
+- **Extended model pricing** — Added GLM-6, Qwen-3.5, DeepSeek-V2 models
+- **Type hint consistency** — Added `from __future__ import annotations` to `__init__.py`
+- **Improved error handling** — Better handling of large token counts, Unicode, empty outputs
+- **Robust provider detection** — Case-insensitive prefix/contains matching with all providers tested
+
+### Changed
+- **Version bump to 0.9.0** — All modules updated
+- **Test suite expanded** — 345 total tests (was 280)
+- **Enhanced fuzziness in model detection** — 10x more resilient prefix matching
+
+### Fixed
+- **Integration test version mismatch** — Fixed test expecting v0.7.0 but using v0.8.0
+- **Empty string parsing** — Now correctly handles whitespace-only inputs
+- **Unicode resilience** — Token parsing works with non-ASCII characters
+- **Edge case coverage** — Session truncation, database migration failures, concurrent access
+
 ## [0.8.0] - 2026-04-09
 
 ### Added

@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime
+
+from agent_tally import __version__
 from pathlib import Path
 from typing import Optional
 
@@ -71,7 +73,7 @@ class TestCLIIntegration:
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
         assert "agent-tally" in result.output
-        assert "0.7.0" in result.output
+        assert __version__ in result.output
 
     def test_no_args_shows_welcome(self):
         runner = CliRunner()

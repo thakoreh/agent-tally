@@ -74,6 +74,26 @@ AGENT_MAP: dict[str, AgentInfo] = {
             r'llm_tokens_input[:\s]+(\d+).*?llm_tokens_output[:\s]+(\d+)',
             # NDJSON streaming: {"t": "input", "c": N} / {"t": "output", "c": M}
             r'"t"\s*:\s*"input".*?"c"\s*:\s*(\d+).*?"t"\s*:\s*"output".*?"c"\s*:\s*(\d+)',
+            # Anthropic streaming: message_start/message_delta with usage block
+            r'"input_tokens"\s*:\s*(\d+).*?"output_tokens"\s*:\s*(\d+)',
+            # Azure OpenAI streaming format
+            r'"prompt_tokens"\s*:\s*(\d+).*?"completion_tokens"\s*:\s*(\d+).*?"total_tokens"',
+            # Bedrock invoke response: usage.inputTokenCount/outputTokenCount
+            r'inputTokenCount[\s":]+(\d+).*?outputTokenCount[\s":]+(\d+)',
+            # Vertex AI: totalTokenCount + candidatesTokenCount
+            r'"totalTokenCount"\s*:\s*(\d+).*?"candidatesTokenCount"\s*:\s*(\d+)',
+            # Thinking/reasoning tokens: thinking_tokens: N, output_tokens: M
+            r'thinking[_\s]?tokens?[:\s]+(\d+).*?output[_\s]?tokens?[:\s]+(\d+)',
+            # Litellm format
+            r'prompt_tokens\s*=\s*(\d+).*?completion_tokens\s*=\s*(\d+)',
+            # Anthropic headers style
+            r'x[-_]input[-_]tokens?[:\s]+(\d+).*?x[-_]output[-_]tokens?[:\s]+(\d+)',
+            # Generic key=value: tokens_in=123 tokens_out=456
+            r'tokens[_\s-]?in[=:\s]+(\d+).*?tokens[_\s-]?out[=:\s]+(\d+)',
+            # Slash format: 1234/5678 tokens
+            r'(\d+)\s*/\s*(\d+)\s*tokens',
+            # Bracket format: [1234 in] [5678 out]
+            r'\[\s*(\d+)\s*in\s*\].*?\[\s*(\d+)\s*out\s*\]',
         ],
     ),
     "codex": AgentInfo(
@@ -226,6 +246,12 @@ def detect_agent(args: list[str]) -> Optional[AgentInfo]:
             r'\|\s*(\d+)\s*\|\s*(\d+)\s*\|.*tokens',
             # SSE/data format
             r'"tokens"\s*:\s*\{[^}]*"input"\s*:\s*(\d+)[^}]*"output"\s*:\s*(\d+)',
+            # Additional generic patterns
+            r'inputTokenCount[\s":]+(\d+).*?outputTokenCount[\s":]+(\d+)',
+            r'thinking[_\s]?tokens?[:\s]+(\d+).*?output[_\s]?tokens?[:\s]+(\d+)',
+            r'prompt_tokens\s*=\s*(\d+).*?completion_tokens\s*=\s*(\d+)',
+            r'(\d+)\s*/\s*(\d+)\s*tokens',
+            r'\[\s*(\d+)\s*in\s*\].*?\[\s*(\d+)\s*out\s*\]',
         ],
     )
 
