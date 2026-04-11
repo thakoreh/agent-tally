@@ -142,6 +142,21 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     # ── Cursor ─────────────────────────────────────────────────
     "cursor-small": {"input": 0.15, "output": 0.60},
     "cursor-pro": {"input": 3.00, "output": 15.00},
+    # ── ZhipuAI / Z.ai updated ─────────────────────────────────
+    "glm-6.5": {"input": 0.14, "output": 0.56},
+    "glm-7": {"input": 0.15, "output": 0.60},
+    "qwen-3.5-turbo": {"input": 0.12, "output": 0.48},
+    "qwen-3.5-max": {"input": 0.50, "output": 1.50},
+    # ── Reka ───────────────────────────────────────────────────
+    "reka-core": {"input": 3.00, "output": 15.00},
+    "reka-flash": {"input": 0.20, "output": 0.80},
+    "reka-edge": {"input": 0.10, "output": 0.40},
+    # ── Perplexity ──────────────────────────────────────────────
+    "sonar-pro": {"input": 3.00, "output": 15.00},
+    "sonar": {"input": 1.00, "output": 1.00},
+    # ── Together AI (hosted) ────────────────────────────────────
+    "together-llama-4-405b": {"input": 0.80, "output": 2.40},
+    "together-deepseek-v5": {"input": 0.30, "output": 1.20},
 }
 
 
@@ -161,10 +176,14 @@ PROVIDER_GROUPS: dict[str, list[str]] = {
     "Meta": ["llama-4.0", "llama-4-maverick", "llama-4-scout", "llama-3.3-70b"],
     "Mistral": ["mistral-large-3", "mistral-large", "mistral-large-2", "mistral-medium", "mistral-small", "codestral"],
     "Cohere": ["command-r-plus", "command-r"],
-    "Chinese/Z.ai": ["glm-5", "glm-4", "glm-5.1", "glm-5.2", "qwen-3", "qwen-2.5-coder",
+    "Chinese/Z.ai": ["glm-7", "glm-6.5", "glm-5", "glm-4", "glm-5.1", "glm-5.2",
+                     "qwen-3.5-turbo", "qwen-3.5-max", "qwen-3", "qwen-2.5-coder",
                      "qwen-3-max", "qwen-3-plus", "qwen-3-coder", "yi-large"],
     "Amazon": ["nova-pro", "nova-lite", "nova-micro", "titan-text-express"],
     "AI21": ["jamba-1.5-large", "jamba-1.5-mini"],
+    "Reka": ["reka-core", "reka-flash", "reka-edge"],
+    "Perplexity": ["sonar-pro", "sonar"],
+    "Together AI": ["together-llama-4-405b", "together-deepseek-v5"],
     "Other OSS": ["dbrx-instruct", "mixtral-8x7b", "llama-3.1-8b", "llama-3.1-70b"],
     "Cursor": ["cursor-small", "cursor-pro"],
 }
