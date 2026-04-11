@@ -10,6 +10,8 @@ import yaml
 
 
 DEFAULT_CONFIG_PATH = Path.home() / ".agent-tally" / "config.yaml"
+# Alternate config path: single file at home directory
+ALT_CONFIG_PATH = Path.home() / ".agent-tally.yaml"
 
 
 @dataclass
@@ -43,11 +45,19 @@ class AgentTallyConfig:
 
 
 def load_config(config_path: Optional[Path] = None) -> AgentTallyConfig:
-    """Load configuration from YAML file, returning defaults if missing."""
-    path = config_path or DEFAULT_CONFIG_PATH
+    """Load configuration from YAML file, returning defaults if missing.
 
-    if not path.exists():
-        return AgentTallyConfig()
+    Search order: explicit path > ~/.agent-tally/config.yaml > ~/.agent-tally.yaml
+    """
+    path = config_path
+    if path is None:
+        # Try primary config first, then alternate
+        if DEFAULT_CONFIG_PATH.exists():
+            path = DEFAULT_CONFIG_PATH
+        elif ALT_CONFIG_PATH.exists():
+            path = ALT_CONFIG_PATH
+        else:
+            return AgentTallyConfig()
 
     try:
         with open(path) as f:

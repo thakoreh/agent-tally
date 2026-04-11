@@ -50,7 +50,7 @@ class BudgetManager:
         self.config = self._load_config()
         self._session_costs: dict[str, float] = {}  # session_id -> cost
         self._warned_sessions: set[str] = set()  # sessions that hit 80%
-        _warned_95_sessions: set[str] = set()  # sessions that hit 95%
+        self._warned_95_sessions: set[str] = set()  # sessions that hit 95%
     
     def _load_config(self) -> BudgetConfig:
         """Load budget configuration from file."""

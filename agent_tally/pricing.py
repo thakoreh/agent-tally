@@ -36,9 +36,11 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "claude-opus-4.5": {"input": 15.00, "output": 75.00},
     "claude-opus-4": {"input": 15.00, "output": 75.00},
     "claude-opus-4.6": {"input": 5.00, "output": 25.00},  # Newer model
+    "claude-opus-4.7": {"input": 4.50, "output": 22.50},  # Latest
     "claude-haiku-3.5": {"input": 0.80, "output": 4.00},
     "claude-code": {"input": 3.00, "output": 15.00},
     "claude-3.5-sonnet": {"input": 3.00, "output": 15.00},
+    "claude-3.5-sonnet-20241022": {"input": 3.00, "output": 15.00},  # New format
     "claude-3.5-haiku": {"input": 0.80, "output": 4.00},
     "claude-3-opus": {"input": 15.00, "output": 75.00},
     "claude-3-sonnet": {"input": 3.00, "output": 15.00},
@@ -50,6 +52,9 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "gpt-5.2-pro": {"input": 21.00, "output": 168.00},  # New flagship model
     "gpt-5-mini": {"input": 0.25, "output": 2.00},    # New budget model
     "gpt-5-nano": {"input": 0.05, "output": 0.40},    # New ultra-budget model
+    "gpt-6": {"input": 3.00, "output": 15.00},  # Next generation
+    "gpt-6-turbo": {"input": 15.00, "output": 60.00},  # New premium
+    "gpt-5o": {"input": 2.50, "output": 10.00},        # New flagship model
     "gpt-5.4-thinking": {"input": 5.00, "output": 20.00},
     "o3-mini": {"input": 1.10, "output": 4.40},
     "o3": {"input": 2.50, "output": 10.00},
@@ -61,6 +66,9 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     # ── Google ─────────────────────────────────────────────────
     "gemini-4.0-pro": {"input": 1.25, "output": 10.00},
     "gemini-4.0-flash": {"input": 0.15, "output": 0.60},
+    "gemini-4.0-flash-exp": {"input": 0.12, "output": 0.48},  # Experimental
+    "gemini-4.5-pro": {"input": 1.50, "output": 12.00},  # New flagship
+    "gemini-4.5-flash": {"input": 0.18, "output": 0.72},  # New optimized
     "gemini-3.1-flash": {"input": 0.15, "output": 0.60},
     "gemini-3.1-pro": {"input": 1.25, "output": 10.00},
     "gemini-3.1-ultra": {"input": 2.50, "output": 15.00},
@@ -75,6 +83,7 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "grok-4.20": {"input": 3.00, "output": 15.00},
     "grok-4": {"input": 3.00, "output": 15.00},
     "grok-4.1": {"input": 0.20, "output": 0.50},  # Newer model
+    "grok-5": {"input": 2.50, "output": 12.50},  # New flagship model
     "grok-3": {"input": 0.50, "output": 2.00},
     "grok-3-mini": {"input": 0.30, "output": 1.00},
     "grok-2": {"input": 2.00, "output": 10.00},
@@ -82,17 +91,22 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "deepseek-v4": {"input": 0.27, "output": 1.10},
     "deepseek-v4-reasoning": {"input": 0.55, "output": 2.19},
     "deepseek-v4.5": {"input": 0.27, "output": 1.10},
+    "deepseek-v5": {"input": 0.20, "output": 0.80},  # New version
     "deepseek-v3": {"input": 0.27, "output": 1.10},
+    "deepseek-r3": {"input": 0.60, "output": 2.40},  # New reasoning model
     "deepseek-r2": {"input": 0.55, "output": 2.19},
     "deepseek-r1": {"input": 0.55, "output": 2.19},
     "deepseek-chat": {"input": 0.14, "output": 0.28},
+    "deepseek-r4": {"input": 0.70, "output": 2.80},  # Latest reasoning
     # ── Meta ───────────────────────────────────────────────────
     "llama-4-maverick": {"input": 0.20, "output": 0.80},
     "llama-4-scout": {"input": 0.10, "output": 0.40},
+    "llama-4.0": {"input": 0.25, "output": 1.00},  # New flagship model
     "llama-3.3-70b": {"input": 0.20, "output": 0.80},
     # ── Mistral ────────────────────────────────────────────────
     "mistral-large": {"input": 2.00, "output": 6.00},
     "mistral-large-2": {"input": 2.00, "output": 6.00},
+    "mistral-large-3": {"input": 2.50, "output": 7.50},  # New flagship model
     "mistral-medium": {"input": 0.40, "output": 1.50},
     "mistral-small": {"input": 0.20, "output": 0.60},
     "codestral": {"input": 0.30, "output": 0.90},
@@ -133,19 +147,19 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
 
 # Provider grouping for organized display
 PROVIDER_GROUPS: dict[str, list[str]] = {
-    "Anthropic": ["claude-sonnet-4.5", "claude-sonnet-4", "claude-opus-4.5", "claude-opus-4", "claude-opus-4.6",
-                  "claude-haiku-3.5", "claude-code", "claude-3.5-sonnet", "claude-3.5-haiku",
+    "Anthropic": ["claude-opus-4.7", "claude-opus-4.6", "claude-sonnet-4.5", "claude-sonnet-4", "claude-opus-4.5", "claude-opus-4",
+                  "claude-haiku-3.5", "claude-code", "claude-3.5-sonnet", "claude-3.5-sonnet-20241022", "claude-3.5-haiku",
                   "claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
-    "OpenAI": ["gpt-5.5", "gpt-5.4", "gpt-5.2-codex", "gpt-5.2-pro", "gpt-5-mini", "gpt-5-nano",
-               "gpt-5.4-thinking", "o3-mini", "o3", "o4-mini", "o4", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
-    "Google": ["gemini-4.0-pro", "gemini-4.0-flash", "gemini-3.1-flash", "gemini-3.1-pro",
+    "OpenAI": ["gpt-6", "gpt-6-turbo", "gpt-5.5", "gpt-5.4", "gpt-5.2-codex", "gpt-5.2-pro", "gpt-5-mini", "gpt-5-nano",
+               "gpt-5o", "gpt-5.4-thinking", "o3-mini", "o3", "o4-mini", "o4", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+    "Google": ["gemini-4.5-pro", "gemini-4.5-flash", "gemini-4.0-pro", "gemini-4.0-flash", "gemini-4.0-flash-exp", "gemini-3.1-flash", "gemini-3.1-pro",
               "gemini-3.1-ultra", "gemini-3.5-pro", "gemini-2.5-flash", "gemini-2.5-pro",
               "gemini-2.5-flash-1.2", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
-    "xAI": ["grok-4.20", "grok-4", "grok-4.1", "grok-3", "grok-3-mini", "grok-2"],
-    "DeepSeek": ["deepseek-v4", "deepseek-v4-reasoning", "deepseek-v4.5", "deepseek-v3",
-                 "deepseek-r2", "deepseek-r1", "deepseek-chat"],
-    "Meta": ["llama-4-maverick", "llama-4-scout", "llama-3.3-70b"],
-    "Mistral": ["mistral-large", "mistral-large-2", "mistral-medium", "mistral-small", "codestral"],
+    "xAI": ["grok-5", "grok-4.20", "grok-4", "grok-4.1", "grok-3", "grok-3-mini", "grok-2"],
+    "DeepSeek": ["deepseek-v5", "deepseek-v4", "deepseek-v4-reasoning", "deepseek-v4.5", "deepseek-v3",
+                 "deepseek-r4", "deepseek-r3", "deepseek-r2", "deepseek-r1", "deepseek-chat"],
+    "Meta": ["llama-4.0", "llama-4-maverick", "llama-4-scout", "llama-3.3-70b"],
+    "Mistral": ["mistral-large-3", "mistral-large", "mistral-large-2", "mistral-medium", "mistral-small", "codestral"],
     "Cohere": ["command-r-plus", "command-r"],
     "Chinese/Z.ai": ["glm-5", "glm-4", "glm-5.1", "glm-5.2", "qwen-3", "qwen-2.5-coder",
                      "qwen-3-max", "qwen-3-plus", "qwen-3-coder", "yi-large"],

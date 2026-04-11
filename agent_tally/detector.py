@@ -49,6 +49,18 @@ AGENT_MAP: dict[str, AgentInfo] = {
             r"input[:\s]+(\d+).*?output[:\s]+(\d+)",
             # "Input tokens: 5000, Output tokens: 2000"
             r"[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)",
+            # Anthropic reasoning format: input_tokens: 1500, output_tokens: 750, reasoning_tokens: 300
+            r"input_tokens[:\s=]+(\d+).*?output_tokens[:\s=]+(\d+)",
+            # OpenAI o1 reasoning format: prompt_tokens: 2000, completion_tokens: 800, reasoning_tokens: 150
+            r"prompt_tokens[:\s=]+(\d+).*?completion_tokens[:\s=]+(\d+)",
+            # Mistral cache format: input_tokens: 2500, output_tokens: 900, cache_creation_input_tokens: 100
+            r"input_tokens[:\s=]+(\d+).*?output_tokens[:\s=]+(\d+)",
+            # Cohere billed format: billed_input_tokens: 3000, billed_output_tokens: 1200
+            r"billed_input_tokens[:\s=]+(\d+).*?billed_output_tokens[:\s=]+(\d+)",
+            # LLaMA simple format: input: 3500, output: 1100, ctx: 8000
+            r"input[:\s=]+(\d+).*?output[:\s=]+(\d+)",
+            # Streaming usage format: {"usage": {"prompt_tokens": 1200, "completion_tokens": 400, "total_tokens": 1600}}
+            r'"usage"\s*:\s*\{[^}]*"prompt_tokens"\s*:\s*(\d+)[^}]*"completion_tokens"\s*:\s*(\d+)',
             # JSON-style: "usage": {"input_tokens": 5000, "output_tokens": 2000}
             r'"input_tokens"[:\s]+(\d+).*?"output_tokens"[:\s]+(\d+)',
             # API-style: "prompt_tokens": 5000, "completion_tokens": 2000
@@ -119,6 +131,10 @@ AGENT_MAP: dict[str, AgentInfo] = {
             r"[Ii]nput\s*tokens?[:\s]+(\d+).*?[Oo]utput\s*tokens?[:\s]+(\d+)",
             # Google API style: totalTokenCount / candidatesTokenCount
             r'"totalTokenCount"[:\s]+(\d+).*?"candidatesTokenCount"[:\s]+(\d+)',
+            # Google Gemini 2.0 format: prompt_tokens / candidates_token_count (with or without quotes)
+            r'"prompt_tokens"[:\s]+(\d+).*?"candidates_token_count"[:\s]+(\d+)',
+            r'prompt_tokens[:\s]+(\d+).*?candidates_token_count[:\s]+(\d+)',
+            r'prompt_tokens[\s=]+(\d+).*?candidates_token_count[\s=]+(\d+)',
         ],
     ),
     "openclaw": AgentInfo(
@@ -252,6 +268,19 @@ def detect_agent(args: list[str]) -> Optional[AgentInfo]:
             r'prompt_tokens\s*=\s*(\d+).*?completion_tokens\s*=\s*(\d+)',
             r'(\d+)\s*/\s*(\d+)\s*tokens',
             r'\[\s*(\d+)\s*in\s*\].*?\[\s*(\d+)\s*out\s*\]',
+            # Newer LLM formats (2024+)
+            r'usage\s*:\s*\{[^}]*"input_tokens"\s*:\s*(\d+)[^}]*"output_tokens"\s*:\s*(\d+)[^}]*"reasoning_tokens"\s*:\s*(\d+)',
+            r'input=\s*(\d+)\s*,\s*output=\s*(\d+)\s*,\s*cache=\s*(\d+)',
+            r'tokens\(in\):\s*(\d+)\s*,\s*tokens\(out\):\s*(\d+)',
+            r'input-tokens=\s*(\d+)\s*,\s*output-tokens=\s*(\d+)',
+            r'input_cost=\$[\d.]+\s*\((\d+)\)\s*,\s*output_cost=\$[\d.]+\s*\((\d+)\)',
+            r'llm\.input_tokens=\s*(\d+)\s*,\s*llm\.output_tokens=\s*(\d+)',
+            r'meta\.input_tokens=\s*(\d+)\s*,\s*meta\.output_tokens=\s*(\d+)',
+            r'anthropic\.input_tokens=\s*(\d+)\s*,\s*anthropic\.output_tokens=\s*(\d+)',
+            r'google\.input_tokens=\s*(\d+)\s*,\s*google\.output_tokens=\s*(\d+)',
+            r'xai\.input_tokens=\s*(\d+)\s*,\s*xai\.output_tokens=\s*(\d+)',
+            r'input_tokens_used=\s*(\d+)\s*,\s*output_tokens_used=\s*(\d+)',
+            r'tokens\[in\]=\s*(\d+)\s*,\s*tokens\[out\]=\s*(\d+)',
         ],
     )
 
