@@ -5,6 +5,28 @@ All notable changes to agent-tally will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-05-25
+
+### Added
+- **Three new LLM providers** with full pricing support:
+  - **Snowflake**: arctic-instruct ($0.20/$0.60), arctic-embed ($0.05/$0.05)
+  - **Writer**: palmyra-x5 ($1.00/$4.00), palmyra-x4 ($0.50/$2.00)
+  - **Microsoft**: phi-4 ($0.15/$0.60), mai-ds-r1 ($0.20/$0.80)
+- **New model variants across existing providers**:
+  - Anthropic: claude-haiku-4 ($1.00/$5.00)
+  - xAI: grok-3.5 ($0.60/$2.50), grok-mini ($0.15/$0.50)
+  - DeepSeek: deepseek-v5.1 ($0.18/$0.70), deepseek-coder-v3 ($0.20/$0.80)
+  - ZhipuAI: glm-7.1 ($0.16/$0.64)
+  - Qwen: qwen-4 ($0.20/$0.80), qwen-4-coder ($0.15/$0.60)
+- **Updated provider groups** — all new models registered in PROVIDER_GROUPS for detection
+- **25 new tests** (test_v10.py) covering new providers, models, cost calculations, and provider detection
+- **Version sync** — setup.py fixed from stale 0.7.0 to match 0.10.0
+
+### Changed
+- Version bumped to 0.10.0 across `__init__.py`, `pyproject.toml`, and `setup.py`
+- Provider groups now include Snowflake, Writer, Microsoft entries
+- Total model count: 120+ models across 18 providers
+
 ## [0.9.0] - 2026-04-09
 
 ### Added
