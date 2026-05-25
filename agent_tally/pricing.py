@@ -38,6 +38,7 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "claude-opus-4.6": {"input": 5.00, "output": 25.00},  # Newer model
     "claude-opus-4.7": {"input": 4.50, "output": 22.50},  # Latest
     "claude-haiku-3.5": {"input": 0.80, "output": 4.00},
+    "claude-haiku-4": {"input": 1.00, "output": 5.00},
     "claude-code": {"input": 3.00, "output": 15.00},
     "claude-3.5-sonnet": {"input": 3.00, "output": 15.00},
     "claude-3.5-sonnet-20241022": {"input": 3.00, "output": 15.00},  # New format
@@ -87,17 +88,21 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "grok-3": {"input": 0.50, "output": 2.00},
     "grok-3-mini": {"input": 0.30, "output": 1.00},
     "grok-2": {"input": 2.00, "output": 10.00},
+    "grok-3.5": {"input": 0.60, "output": 2.50},
+    "grok-mini": {"input": 0.15, "output": 0.50},
     # ── DeepSeek ───────────────────────────────────────────────
     "deepseek-v4": {"input": 0.27, "output": 1.10},
     "deepseek-v4-reasoning": {"input": 0.55, "output": 2.19},
     "deepseek-v4.5": {"input": 0.27, "output": 1.10},
     "deepseek-v5": {"input": 0.20, "output": 0.80},  # New version
     "deepseek-v3": {"input": 0.27, "output": 1.10},
+    "deepseek-v5.1": {"input": 0.18, "output": 0.70},
     "deepseek-r3": {"input": 0.60, "output": 2.40},  # New reasoning model
     "deepseek-r2": {"input": 0.55, "output": 2.19},
     "deepseek-r1": {"input": 0.55, "output": 2.19},
     "deepseek-chat": {"input": 0.14, "output": 0.28},
     "deepseek-r4": {"input": 0.70, "output": 2.80},  # Latest reasoning
+    "deepseek-coder-v3": {"input": 0.20, "output": 0.80},
     # ── Meta ───────────────────────────────────────────────────
     "llama-4-maverick": {"input": 0.20, "output": 0.80},
     "llama-4-scout": {"input": 0.10, "output": 0.40},
