@@ -106,6 +106,17 @@ AGENT_MAP: dict[str, AgentInfo] = {
             r'(\d+)\s*/\s*(\d+)\s*tokens',
             # Bracket format: [1234 in] [5678 out]
             r'\[\s*(\d+)\s*in\s*\].*?\[\s*(\d+)\s*out\s*\]',
+            # New 2026 structured output formats
+            r'token_usage\s*:\s*\{[^}]*input\s*:\s*(\d+)[^}]*output\s*:\s*(\d+)',
+            r'usage_stats\s*\{\s*input_tokens:\s*(\d+)\s*output_tokens:\s*(\d+)',
+            r'tok_in=(\d+)\s+tok_out=(\d+)',
+            r'num_tokens\s*\{\s*input:\s*(\d+)\s*output:\s*(\d+)',
+            # Cost-prefixed: $0.42 (1234 in / 5678 out)
+            r'\$[\d.]+\s+\((\d+)\s*in.*?(\d+)\s*out\)',
+            # Arrow format: 1234 → 5678 tokens
+            r'(\d+)\s*→\s*(\d+)\s*tokens?',
+            # NDJSON with token_count fields
+            r'"token_count"\s*:\s*\{[^}]*"input"\s*:\s*(\d+)[^}]*"output"\s*:\s*(\d+)',
         ],
     ),
     "codex": AgentInfo(
@@ -281,6 +292,12 @@ def detect_agent(args: list[str]) -> Optional[AgentInfo]:
             r'xai\.input_tokens=\s*(\d+)\s*,\s*xai\.output_tokens=\s*(\d+)',
             r'input_tokens_used=\s*(\d+)\s*,\s*output_tokens_used=\s*(\d+)',
             r'tokens\[in\]=\s*(\d+)\s*,\s*tokens\[out\]=\s*(\d+)',
+            # New 2026 structured formats
+            r'token_usage\s*:\s*\{[^}]*input\s*:\s*(\d+)[^}]*output\s*:\s*(\d+)',
+            r'usage_stats\s*\{\s*input_tokens:\s*(\d+)\s*output_tokens:\s*(\d+)',
+            r'tok_in=(\d+)\s+tok_out=(\d+)',
+            r'(\d+)\s*→\s*(\d+)\s*tokens?',
+            r'"token_count"\s*:\s*\{[^}]*"input"\s*:\s*(\d+)[^}]*"output"\s*:\s*(\d+)',
         ],
     )
 

@@ -5,6 +5,32 @@ All notable changes to agent-tally will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-05-25
+
+### Added
+- **11 new frontier models (2026 Q2)** across all major providers:
+  - Anthropic: claude-sonnet-5 ($3.50/$17.50), claude-haiku-5 ($1.20/$6.00)
+  - OpenAI: gpt-6.5 ($5.00/$25.00), gpt-6.5-turbo ($20.00/$80.00)
+  - Google: gemini-5.0-pro ($2.00/$15.00), gemini-5.0-flash ($0.20/$0.80)
+  - xAI: grok-5-mini ($0.40/$1.50)
+  - DeepSeek: deepseek-v5.5 ($0.22/$0.88), deepseek-r5 ($0.80/$3.20)
+  - Meta: llama-5 ($0.30/$1.20)
+  - Mistral: mistral-7b-v2 ($0.10/$0.30)
+- **7 new token detection patterns** for 2026 structured output formats:
+  - `token_usage: {input: N, output: M}` (structured key-value)
+  - `usage_stats {input_tokens: N output_tokens: M}` (Go-style struct)
+  - `tok_in=N tok_out=M` (compact key=value)
+  - `num_tokens {input: N output: M}` (Rust-style)
+  - `$0.42 (N in / M out)` (cost-prefixed)
+  - `N → M tokens` (Unicode arrow format)
+  - `"token_count": {"input": N, "output": M}` (NDJSON)
+- **30+ new tests** (test_v11.py) covering frontier models, cost calculations, provider detection, and edge cases
+- Total model count now 130+ across 19 providers
+
+### Changed
+- Version bumped to 0.11.0 across `__init__.py`, `pyproject.toml`, and `setup.py`
+- Provider groups updated to include all new frontier models
+
 ## [0.10.0] - 2026-05-25
 
 ### Added
