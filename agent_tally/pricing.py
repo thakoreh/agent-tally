@@ -201,7 +201,7 @@ PROVIDER_GROUPS: dict[str, list[str]] = {
               "gemini-2.5-flash-1.2", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
     "xAI": ["grok-5-mini", "grok-5", "grok-4.20", "grok-4", "grok-4.1", "grok-3.5", "grok-3", "grok-3-mini", "grok-mini", "grok-2"],
     "DeepSeek": ["deepseek-r5", "deepseek-v5.5", "deepseek-v5.1", "deepseek-v5", "deepseek-v4", "deepseek-v4-reasoning", "deepseek-v4.5", "deepseek-v3",
-                 "deepseek-r4", "deepseek-r3", "deepseek-r2", "deepseek-r1", "deepseek-coder-v3", "deepseek-chat"],
+                 "deepseek-r4", "deepseek-r3", "deepseek-r2", "deepseek-r1", "deepseek-coder-v3", "deepseek-chat", "deepseek-v2"],
     "Meta": ["llama-5", "llama-4.0", "llama-4-maverick", "llama-4-scout", "llama-3.3-70b"],
     "Mistral": ["mistral-7b-v2", "mistral-large-3", "mistral-large", "mistral-large-2", "mistral-medium", "mistral-small", "codestral"],
     "Cohere": ["command-r-plus", "command-r"],
