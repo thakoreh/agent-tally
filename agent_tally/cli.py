@@ -501,7 +501,7 @@ def completion(shell: str, install: bool) -> None:
 def agents(as_json: bool = False) -> None:
     """List supported agents."""
     if as_json:
-        output = {name: {"display": info["display_name"], "command": info["command"]} for name, info in AGENT_MAP.items()}
+        output = {name: {"display": info.display_name, "command": info.cli_command} for name, info in AGENT_MAP.items()}
         click.echo(json_mod.dumps(output, indent=2))
     else:
         print_agents_list()

@@ -21,7 +21,7 @@ class Alert:
     cost: float = 0.0
     budget_type: str = ""  # "session" or "daily"
     threshold: str = ""  # "80", "95", "100"
-    timestamp: datetime = None
+    timestamp: Optional[datetime] = None
     
     def __post_init__(self) -> None:
         if self.timestamp is None:
