@@ -4,6 +4,24 @@ All notable changes to agent-tally will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.14.0] - 2026-05-27
+
+### Added
+- **Session notes**: Add notes to sessions with `agent-tally note <id> <text>`. Notes accumulate semicolon-separated.
+- **`hourly` command**: Show cost distribution by hour of day with bar chart and `--json` output.
+- **Cost anomaly detection**: `status` command now flags statistically unusual sessions (2σ+ outliers).
+- **Storage.get_anomalies()**: Statistical outlier detection using standard deviation thresholds.
+- **Storage.add_note()**: Append notes to existing sessions.
+- **DB migration**: Automatic migration adds `notes` column to existing databases.
+- **Enriched outputs**: `session`, `history`, `recent`, `export` now include `notes` and `tags` fields in JSON output.
+- **Status anomalies in JSON**: `status --json` includes anomaly list with session details.
+- **May 2026 model pricing**: Added gpt-5.5-instant, gemini-3.1-flash-lite, grok-4.3, subq-1m-preview, zaya-1-8b.
+- 22 new tests for v0.14.0 features (test_v14.py)
+
+### Changed
+- Total test count: 569 (up from 547)
+- Model pricing database: 143 models across 21 providers
+
 
 ## [0.13.0] - 2026-05-27
 
