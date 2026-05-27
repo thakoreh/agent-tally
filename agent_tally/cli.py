@@ -269,6 +269,8 @@ def history(limit: int, agent: Optional[str], since: str, min_cost: Optional[flo
                 "started_at": s.started_at.isoformat() if s.started_at else None,
                 "ended_at": s.ended_at.isoformat() if s.ended_at else None,
                 "duration_sec": s.duration_sec,
+                "notes": s.notes,
+                "tags": s.tags,
             }
             for s in sessions
         ]
@@ -453,6 +455,8 @@ def export(format: str, since: str, output: Optional[str], as_json: bool) -> Non
             "started_at": s.started_at.isoformat() if s.started_at else None,
             "ended_at": s.ended_at.isoformat() if s.ended_at else None,
             "duration_sec": s.duration_sec,
+            "notes": s.notes,
+            "tags": s.tags,
         })
 
     if format == "json":
@@ -818,6 +822,8 @@ def session_inspect(session_id: int, as_json: bool) -> None:
             "ended_at": s.ended_at.isoformat() if s.ended_at else None,
             "duration_sec": s.duration_sec,
             "tokens_per_sec": round(tokens_per_sec, 2) if tokens_per_sec else None,
+            "notes": s.notes,
+            "tags": s.tags,
         }
         click.echo(json_mod.dumps(output, indent=2))
     else:
@@ -845,6 +851,10 @@ def session_inspect(session_id: int, as_json: bool) -> None:
             table.add_row("Token Rate", f"{tokens_per_sec:.1f} tokens/sec")
         table.add_row("Started", s.started_at.strftime("%Y-%m-%d %H:%M:%S") if s.started_at else "-")
         table.add_row("Ended", s.ended_at.strftime("%Y-%m-%d %H:%M:%S") if s.ended_at else "-")
+        if s.tags:
+            table.add_row("Tags", s.tags)
+        if s.notes:
+            table.add_row("Notes", s.notes[:200] + "..." if len(s.notes) > 200 else s.notes)
 
         console.print(table)
 
@@ -945,6 +955,30 @@ def tag(session_id: int, tag: str) -> None:
     storage.close()
 
 
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# NOTE COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.argument("session_id", type=int)
+@click.argument("note_text")
+def note(session_id: int, note_text: str) -> None:
+    """Add a note to a session. E.g.: agent-tally note 42 "used for production deploy"
+
+    Notes accumulate (semicolon-separated) if you add multiple.
+    """
+    storage = Storage()
+    if storage.add_note(session_id, note_text):
+        session = storage.get(session_id)
+        click.echo(f"Added note to session {session_id}.")
+        click.echo(f"  Notes: {session.notes}")
+    else:
+        click.echo(f"Session {session_id} not found.")
+        sys.exit(1)
+    storage.close()
+
 # ═══════════════════════════════════════════════════════════════════════════
 # COST BATCH COMMAND
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1013,6 +1047,74 @@ def cost_batch(csv_file: str, fmt: str) -> None:
             table.add_row(str(r["row"]), r["model"], f"{r['tokens_in']:,}", f"{r['tokens_out']:,}", f"${r['cost']:.6f}")
         table.add_row("", "TOTAL", "", "", f"[bold]${total_cost:.6f}[/bold]")
         rc.print(table)
+
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HOURLY COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.option("--since", default="7d", help="Time window")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def hourly(since: str, as_json: bool) -> None:
+    """Show cost distribution by hour of day (find your peak spending hours).
+
+    Examples:
+        agent-tally hourly
+        agent-tally hourly --since 30d --json
+    """
+    storage = Storage()
+    since_dt = _parse_since(since)
+    summaries = storage.summary_by_hour(since=since_dt)
+
+    if not summaries:
+        click.echo("No sessions found for the given time range.")
+        storage.close()
+        return
+
+    max_cost = max(r["total_cost"] or 0 for r in summaries) or 1
+
+    if as_json:
+        output = {
+            "since": since,
+            "hourly": [
+                {"hour": r["hour"], "sessions": r["session_count"], "cost": r["total_cost"] or 0.0}
+                for r in summaries
+            ],
+        }
+        click.echo(json_mod.dumps(output, indent=2))
+    else:
+        from rich.console import Console as RichConsole
+        from rich.table import Table as RichTable
+        from rich import box as rich_box
+
+        rc = RichConsole()
+        table = RichTable(
+            title=f"Hourly Cost Distribution ({since})",
+            box=rich_box.ROUNDED,
+            title_style="bold cyan",
+        )
+        table.add_column("Hour", justify="right", style="bold")
+        table.add_column("Sessions", justify="right")
+        table.add_column("Cost", justify="right", style="bold yellow")
+        table.add_column("Bar", style="dim")
+
+        for r in summaries:
+            cost = r["total_cost"] or 0.0
+            bar_len = int((cost / max_cost) * 30) if max_cost > 0 else 0
+            bar = "\u2588" * bar_len + "\u2591" * (30 - bar_len)
+            table.add_row(
+                "{0:02d}:00".format(r["hour"]),
+                str(r["session_count"]),
+                "${0:.4f}".format(cost),
+                bar,
+            )
+
+        rc.print(table)
+
+    storage.close()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1136,6 +1238,8 @@ def recent(limit: int, as_json: bool) -> None:
                 "started_at": s.started_at.isoformat() if s.started_at else None,
                 "ended_at": s.ended_at.isoformat() if s.ended_at else None,
                 "duration_sec": s.duration_sec,
+                "notes": s.notes,
+                "tags": s.tags,
             }
             for s in sessions
         ]
@@ -1216,6 +1320,18 @@ def status(as_json: bool) -> None:
         except Exception:
             pass
 
+        # Cost anomalies in JSON output
+        try:
+            anomalies = storage.get_anomalies()
+            if anomalies:
+                output["anomalies"] = [
+                    {"id": a.id, "agent": a.agent, "model": a.model, "cost": a.cost,
+                     "started_at": a.started_at.isoformat() if a.started_at else None}
+                    for a in anomalies[:5]
+                ]
+        except Exception:
+            pass
+
         click.echo(json_mod.dumps(output, indent=2))
     else:
         from rich.console import Console as RichConsole
@@ -1247,6 +1363,17 @@ def status(as_json: bool) -> None:
                     lines.append(f"\n[yellow]Budget: ${today_cost:.4f} / ${manager.config.daily_limit:.2f} ({pct:.0f}%) — ${remaining:.4f} remaining[/yellow]")
                 else:
                     lines.append(f"\n[green]Budget: ${today_cost:.4f} / ${manager.config.daily_limit:.2f} ({pct:.0f}%) — ${remaining:.4f} remaining[/green]")
+        except Exception:
+            pass
+
+        # Cost anomalies
+        try:
+            anomalies = storage.get_anomalies()
+            if anomalies:
+                lines.append("\n[bold red]Cost Anomalies ({0}):[/bold red]".format(len(anomalies)))
+                for a in anomalies[:5]:
+                    when = a.started_at.strftime("%m/%d %H:%M") if a.started_at else "?"
+                    lines.append("  [red]${0:.4f}[/red] \u2014 {1} ({2}) at {3}".format(a.cost, a.agent, a.model or "?", when))
         except Exception:
             pass
 

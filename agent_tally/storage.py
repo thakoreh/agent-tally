@@ -25,6 +25,7 @@ class Session:
     ended_at: Optional[datetime] = None
     duration_sec: float = 0.0
     tags: str = ""
+    notes: str = ""
 
     @property
     def tokens_per_sec(self) -> Optional[float]:
@@ -79,6 +80,11 @@ class Storage:
         except sqlite3.OperationalError:
             conn.execute("ALTER TABLE sessions ADD COLUMN tags TEXT DEFAULT ''")
             conn.commit()
+        try:
+            conn.execute("SELECT notes FROM sessions LIMIT 0")
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE sessions ADD COLUMN notes TEXT DEFAULT ''")
+            conn.commit()
         conn.close()
 
     def insert(self, session: Session) -> int:
@@ -98,8 +104,8 @@ class Storage:
                 tags=session.tags,
             )
         cursor = self.conn.execute(
-            """INSERT INTO sessions (agent, model, task_prompt, tokens_in, tokens_out, cost, started_at, ended_at, duration_sec, tags)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO sessions (agent, model, task_prompt, tokens_in, tokens_out, cost, started_at, ended_at, duration_sec, tags, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 session.agent,
                 session.model,
@@ -111,6 +117,7 @@ class Storage:
                 session.ended_at.isoformat() if session.ended_at else None,
                 session.duration_sec,
                 session.tags,
+                session.notes,
             ),
         )
         self.conn.commit()
@@ -239,6 +246,7 @@ class Storage:
             ended_at=datetime.fromisoformat(row["ended_at"]) if row["ended_at"] else None,
             duration_sec=row["duration_sec"],
             tags=row["tags"] if "tags" in row.keys() else "",
+            notes=row["notes"] if "notes" in row.keys() else "",
         )
 
     def summary_by_hour(
@@ -280,6 +288,39 @@ class Storage:
             cursor = self.conn.execute("DELETE FROM sessions")
         self.conn.commit()
         return cursor.rowcount
+
+
+    def add_note(self, session_id: int, note: str) -> bool:
+        """Add or append a note to a session. Returns True if updated."""
+        session = self.get(session_id)
+        if session is None:
+            return False
+        existing = session.notes.strip()
+        if existing:
+            new_notes = f"{existing}; {note}"
+        else:
+            new_notes = note
+        self.conn.execute("UPDATE sessions SET notes=? WHERE id=?", (new_notes, session_id))
+        self.conn.commit()
+        return True
+
+    def get_anomalies(self, threshold_std: float = 2.0, min_sessions: int = 5) -> list[Session]:
+        """Detect sessions with unusually high costs (statistical outliers).
+
+        Returns sessions whose cost is more than threshold_std standard deviations
+        above the mean. Requires at least min_sessions to compute stats.
+        """
+        import statistics
+        sessions = self.query(limit=10000)
+        if len(sessions) < min_sessions:
+            return []
+        costs = [s.cost for s in sessions]
+        mean_cost = statistics.mean(costs)
+        stdev_cost = statistics.stdev(costs)
+        if stdev_cost == 0:
+            return []
+        threshold = mean_cost + threshold_std * stdev_cost
+        return [s for s in sessions if s.cost > threshold]
 
     def close(self) -> None:
         if self._conn:
