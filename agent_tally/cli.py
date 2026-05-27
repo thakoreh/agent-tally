@@ -289,11 +289,12 @@ def history(limit: int, agent: Optional[str], since: str, min_cost: Optional[flo
 @click.option("--by-task", "by_task", is_flag=True, help="Group by task")
 @click.option("--by-date", "by_date", is_flag=True, help="Group by date")
 @click.option("--by-hour", "by_hour", is_flag=True, help="Group by hour of day")
+@click.option("--by-provider", "by_provider", is_flag=True, help="Group by model provider")
 @click.option("--since", "since", default="today", help="Time window: 'today', '7d', '30d', 'all', or ISO date")
 @click.option("--limit", "limit", default=50, help="Max results")
 @click.option("--tags", default=None, help="Filter by tags (comma-separated)")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON for programmatic use")
-def summary(by_agent: bool, by_model: bool, by_task: bool, by_date: bool, by_hour: bool, since: str, limit: int, tags: Optional[str], as_json: bool) -> None:
+def summary(by_agent: bool, by_model: bool, by_task: bool, by_date: bool, by_hour: bool, by_provider: bool, since: str, limit: int, tags: Optional[str], as_json: bool) -> None:
     """Show cost summary."""
     storage = Storage()
     since_dt = _parse_since(since)
@@ -319,6 +320,46 @@ def summary(by_agent: bool, by_model: bool, by_task: bool, by_date: bool, by_hou
                 table.add_column("Total Cost", justify="right", style="bold yellow")
                 for r in summaries:
                     table.add_row(f"{r['hour']:02d}:00", str(r['session_count']), f"${r['total_cost'] or 0:.4f}")
+                rc.print(table)
+            else:
+                click.echo("No sessions found for the given time range.")
+        storage.close()
+        return
+
+    if by_provider:
+        summaries = storage.summary_by_provider(since=since_dt)
+        if as_json:
+            output = {
+                "summary": [{"provider": r["provider"], "sessions": r["sessions"], "total_cost": r["cost"], "models": r["models"]} for r in summaries],
+                "since": since,
+                "group_by": "provider",
+            }
+            click.echo(json_mod.dumps(output, indent=2))
+        else:
+            if summaries:
+                from rich.console import Console as RichConsole
+                from rich.table import Table as RichTable
+                from rich import box as rich_box
+                rc = RichConsole()
+                table = RichTable(title=f"Cost by Provider ({since})", box=rich_box.ROUNDED, title_style="bold cyan")
+                table.add_column("Provider", style="bold")
+                table.add_column("Sessions", justify="right")
+                table.add_column("Tokens In", justify="right", style="green")
+                table.add_column("Tokens Out", justify="right", style="green")
+                table.add_column("Cost", justify="right", style="bold yellow")
+                table.add_column("Models", style="dim")
+                for r in summaries:
+                    models_str = ", ".join(r["models"][:3])
+                    if len(r["models"]) > 3:
+                        models_str += f" (+{len(r['models']) - 3} more)"
+                    table.add_row(
+                        r["provider"],
+                        str(r["sessions"]),
+                        f"{r['tokens_in']:,}" if r["tokens_in"] else "-",
+                        f"{r['tokens_out']:,}" if r["tokens_out"] else "-",
+                        f"${r['cost']:.4f}" if r["cost"] else "-",
+                        models_str,
+                    )
                 rc.print(table)
             else:
                 click.echo("No sessions found for the given time range.")
@@ -1058,3 +1099,157 @@ def _parse_since(since: str) -> Optional[datetime]:
     except ValueError:
         click.echo(f"Warning: couldn't parse '{since}', defaulting to today")
         return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# RECENT COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.option("--limit", "-n", default=5, help="Number of sessions to show")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def recent(limit: int, as_json: bool) -> None:
+    """Show the most recent sessions (quick status check).
+
+    Examples:
+        agent-tally recent
+        agent-tally recent -n 10 --json
+    """
+    storage = Storage()
+    sessions = storage.query(limit=limit)
+
+    if not sessions:
+        click.echo("No sessions found.")
+        storage.close()
+        return
+
+    if as_json:
+        output = [
+            {
+                "id": s.id,
+                "agent": s.agent,
+                "model": s.model,
+                "task_prompt": s.task_prompt[:80] + "..." if len(s.task_prompt) > 80 else s.task_prompt,
+                "tokens_in": s.tokens_in,
+                "tokens_out": s.tokens_out,
+                "cost": s.cost,
+                "started_at": s.started_at.isoformat() if s.started_at else None,
+                "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+                "duration_sec": s.duration_sec,
+            }
+            for s in sessions
+        ]
+        click.echo(json_mod.dumps(output, indent=2))
+    else:
+        # Compact one-line summary for quick reading
+        total_cost = sum(s.cost for s in sessions)
+        total_in = sum(s.tokens_in for s in sessions)
+        total_out = sum(s.tokens_out for s in sessions)
+
+        click.echo(f"\n  Last {len(sessions)} sessions (total: ${total_cost:.4f})\n")
+        for s in sessions:
+            when = s.started_at.strftime("%H:%M") if s.started_at else "?"
+            cost_str = f"${s.cost:.4f}" if s.cost > 0 else "$0"
+            dur = f"{s.duration_sec:.0f}s" if s.duration_sec else "-"
+            task = s.task_prompt[:40] + "..." if len(s.task_prompt) > 40 else s.task_prompt
+            model = s.model or "-"
+            click.echo(f"  {when}  {s.agent:15s}  {model:20s}  {s.tokens_in:>6,} in  {s.tokens_out:>6,} out  {cost_str:>10s}  {dur:>5s}  {task}")
+        click.echo(f"\n  Tokens: {total_in:,} in / {total_out:,} out\n")
+
+    storage.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# STATUS COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def status(as_json: bool) -> None:
+    """Show today's spending summary and budget status.
+
+    Examples:
+        agent-tally status
+        agent-tally status --json
+    """
+    storage = Storage()
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    sessions = storage.query(since=today, limit=10000)
+
+    today_cost = sum(s.cost for s in sessions)
+    today_tokens_in = sum(s.tokens_in for s in sessions)
+    today_tokens_out = sum(s.tokens_out for s in sessions)
+
+    # Get all-time stats
+    all_sessions = storage.query(limit=100000)
+    all_cost = sum(s.cost for s in all_sessions)
+
+    # Agent breakdown for today
+    agent_costs: dict[str, float] = {}
+    for s in sessions:
+        agent_costs[s.agent] = agent_costs.get(s.agent, 0.0) + s.cost
+
+    if as_json:
+        output = {
+            "today": {
+                "sessions": len(sessions),
+                "cost": round(today_cost, 6),
+                "tokens_in": today_tokens_in,
+                "tokens_out": today_tokens_out,
+            },
+            "all_time": {
+                "sessions": len(all_sessions),
+                "cost": round(all_cost, 6),
+            },
+            "today_by_agent": {k: round(v, 6) for k, v in sorted(agent_costs.items(), key=lambda x: x[1], reverse=True)},
+        }
+
+        # Add budget status if configured
+        try:
+            manager = BudgetManager()
+            if manager.config.daily_limit:
+                output["budget"] = {
+                    "daily_limit": manager.config.daily_limit,
+                    "remaining": round(manager.config.daily_limit - today_cost, 6),
+                    "pct_used": round((today_cost / manager.config.daily_limit) * 100, 2),
+                }
+        except Exception:
+            pass
+
+        click.echo(json_mod.dumps(output, indent=2))
+    else:
+        from rich.console import Console as RichConsole
+        from rich.panel import Panel
+
+        rc = RichConsole()
+
+        lines = []
+        lines.append(f"[bold]Today:[/bold]  {len(sessions)} sessions  |  ${today_cost:.4f}  |  {today_tokens_in:,} in / {today_tokens_out:,} out tokens")
+        lines.append(f"[bold]All-time:[/bold]  {len(all_sessions)} sessions  |  ${all_cost:.4f}")
+
+        if agent_costs:
+            lines.append("")
+            lines.append("[bold]Today by agent:[/bold]")
+            for agent, cost in sorted(agent_costs.items(), key=lambda x: x[1], reverse=True):
+                bar_len = min(int(cost / max(today_cost, 0.01) * 20), 20)
+                bar = "█" * bar_len + "░" * (20 - bar_len)
+                lines.append(f"  {agent:20s}  ${cost:.4f}  [dim]{bar}[/dim]")
+
+        # Budget status
+        try:
+            manager = BudgetManager()
+            if manager.config.daily_limit:
+                remaining = manager.config.daily_limit - today_cost
+                pct = (today_cost / manager.config.daily_limit) * 100
+                if pct >= 100:
+                    lines.append(f"\n[red bold]Budget: ${today_cost:.4f} / ${manager.config.daily_limit:.2f} ({pct:.0f}%) — EXCEEDED[/red bold]")
+                elif pct >= 80:
+                    lines.append(f"\n[yellow]Budget: ${today_cost:.4f} / ${manager.config.daily_limit:.2f} ({pct:.0f}%) — ${remaining:.4f} remaining[/yellow]")
+                else:
+                    lines.append(f"\n[green]Budget: ${today_cost:.4f} / ${manager.config.daily_limit:.2f} ({pct:.0f}%) — ${remaining:.4f} remaining[/green]")
+        except Exception:
+            pass
+
+        rc.print(Panel("\n".join(lines), title="agent-tally status", border_style="cyan"))
+
+    storage.close()

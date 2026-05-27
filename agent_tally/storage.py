@@ -285,3 +285,38 @@ class Storage:
         if self._conn:
             self._conn.close()
             self._conn = None
+
+    def summary_by_provider(
+        self,
+        since: Optional[datetime] = None,
+    ) -> list[dict]:
+        """Get cost summary grouped by provider using pricing.detect_provider."""
+        from .pricing import detect_provider
+
+        sessions = self.query(since=since, limit=100000)
+        provider_data: dict[str, dict] = {}
+
+        for s in sessions:
+            provider = detect_provider(s.model) if s.model else "Unknown"
+            if provider not in provider_data:
+                provider_data[provider] = {
+                    "provider": provider,
+                    "sessions": 0,
+                    "tokens_in": 0,
+                    "tokens_out": 0,
+                    "cost": 0.0,
+                    "models": set(),
+                }
+            entry = provider_data[provider]
+            entry["sessions"] += 1
+            entry["tokens_in"] += s.tokens_in
+            entry["tokens_out"] += s.tokens_out
+            entry["cost"] += s.cost
+            if s.model:
+                entry["models"].add(s.model)
+
+        result = sorted(provider_data.values(), key=lambda x: x["cost"], reverse=True)
+        # Convert sets to sorted lists for JSON serialization
+        for r in result:
+            r["models"] = sorted(r["models"])
+        return result
