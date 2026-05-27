@@ -5,23 +5,24 @@ All notable changes to agent-tally will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.12.0] - 2026-05-26
-
-### Fixed
-- **agents --json command crash**: Fixed `TypeError` when using `--json` flag on `agents` command — was incorrectly accessing `AgentInfo` dataclass as dict (`info["display_name"]`) instead of using attribute access (`info.display_name`)
-- **Alert.timestamp type annotation**: Changed from `datetime = None` to `Optional[datetime] = None` for correct type checking
+## [0.13.0] - 2026-05-27
 
 ### Added
-- `__all__` exports in `agent_tally/__init__.py` for cleaner public API
-- 15 new tests (test_v12.py) covering:
-  - Agents command JSON output validation
-  - Alert timestamp type handling
-  - AgentInfo dataclass field validation
-  - CLI version flag consistency
-  - Summary/cost command edge cases
+- **`recent` command**: Quick view of last N sessions with `agent-tally recent [-n 5] [--json]`
+- **`status` command**: Today's spending summary with budget status, agent breakdown, and bar visualization
+- **`--by-provider` summary**: Group costs by model provider (Anthropic, OpenAI, Google, etc.)
+- **`storage.summary_by_provider()`**: New method for provider-level cost aggregation
+- 11 new tests for v0.13.0 features (test_v13.py)
 
-### Changed
-- Version bumped to 0.12.0
+### Fixed
+- Flaky wrapper test: `test_wrap_echo_command` now accepts duration >= 0 (echo can complete in <1ms)
+
+## [0.12.0] - 2026-05-26
+
+### Added
+- `agents --json` command for programmatic agent listing
+- Type hints throughout codebase
+- Version bump to 0.12.0
 
 ## [0.11.0] - 2026-05-25
 
@@ -74,7 +75,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.0] - 2026-04-09
 
 ### Added
-- **Enhanced token detection patterns** — 12 new regex patterns for modern LLM output formats
+- **Enhanced token detection patterns** — 12 new regex patterns for modern LLM output formats:
+  - Anthropic streaming events (`message_start`/`message_delta` with usage blocks)
+  - AWS Bedrock format (`inputTokenCount`/`outputTokenCount`)
+  - Vertex AI (`totalTokenCount`/`candidatesTokenCount`)
+  - Thinking/reasoning tokens (`thinking_tokens: N, output_tokens: M`)
+  - LiteLLM format (`prompt_tokens=X, completion_tokens=Y`)
+  - Slash format (`1234/5678 tokens`)
+  - Bracket format (`[1234 in] [5678 out]`)
+  - 65+ comprehensive test cases covering all edge cases
 - **Extended model pricing** — Added GLM-6, Qwen-3.5, DeepSeek-V2 models
 - **Type hint consistency** — Added `from __future__ import annotations` to `__init__.py`
 - **Improved error handling** — Better handling of large token counts, Unicode, empty outputs
@@ -83,75 +92,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Version bump to 0.9.0** — All modules updated
 - **Test suite expanded** — 345 total tests (was 280)
+- **Enhanced fuzziness in model detection** — 10x more resilient prefix matching
 
 ### Fixed
-- **Integration test version mismatch**
-- **Empty string parsing**
-- **Unicode resilience**
-- **Edge case coverage**
+- **Integration test version mismatch** — Fixed test expecting v0.7.0 but using v0.8.0
+- **Empty string parsing** — Now correctly handles whitespace-only inputs
+- **Unicode resilience** — Token parsing works with non-ASCII characters
+- **Edge case coverage** — Session truncation, database migration failures, concurrent access
 
 ## [0.8.0] - 2026-04-09
 
 ### Added
-- **`detect_provider()` utility**
-- **Session tagging**
-- **`cost-batch` command**
-- **`summary --by-hour`**
-- **`agents --json`**
-- **DB migration** for `tags` column
-- **22 new tests**
+- **`detect_provider()` utility** — returns provider name from model name using PROVIDER_GROUPS mapping with fuzzy matching
+- **Session tagging** — `tags` column on sessions, `--tag` on `run`, `--tags` filter on `history`/`summary`, `agent-tally tag <id> <tag>` command
+- **`cost-batch` command** — estimate costs from CSV files (`model,tokens_in,tokens_out`) with `--format json/csv/table`
+- **`summary --by-hour`** — group sessions by hour of day (0-23) to identify cost patterns
+- **`agents --json`** — list supported agents as JSON
+- **DB migration** — automatic `ALTER TABLE` for `tags` column on existing databases
+- **22 new tests** — provider detection, tagging edge cases, batch cost validation, by-hour grouping
 
 ## [0.7.0] - 2026-04-08
 
 ### Added
-- **`cost` command** with `--json`
-- **`session` command** with `--json`
-- **Token rate** property
-- **`budget show --json`**
+- **`cost` command** — quick cost estimation: `agent-tally cost <model> <tokens_in> <tokens_out>` with `--json`
+- **`session` command** — inspect a specific session by ID: `agent-tally session 42` with `--json`
+- **Token rate** — `Session.tokens_per_sec` property computes tokens/second throughput
+- **`budget show --json`** — JSON output for budget status (daily limit, session limit, remaining, pct_used)
+- Version synced across `__init__.py`, `pyproject.toml`, and `setup.py`
 
 ## [0.6.0] - 2026-04-08
 
 ### Added
-- **Cursor agent detection**
-- **`top` command**
-- **Markdown export**
-- **Flexible `--since` parsing**
+- **Cursor agent detection** — Cursor is now in AGENT_MAP with full token pattern support
+- **`top` command** — show top spending agents or models with `--by`, `--since`, `--limit`, `--json` options
+- **Markdown export** — `export --format markdown` produces a shareable Markdown table
+- **Flexible `--since` parsing** — supports `1h`, `30m`, `24h`, `7d` style durations alongside existing formats
+- Additional model pricing: glm-5.1, qwen-3-max, qwen-3-plus
 - 33 new tests (226 total)
 
 ## [0.5.0] - 2026-04-07
 
 ### Added
-- 45 edge case tests (193 total)
-- Input validation: negative budget limits raise `ValueError`
-- `MAX_TASK_PROMPT_LENGTH` (10,000 chars)
+- 45 edge case tests covering pricing fuzzy matching, storage errors, budget validation, detector robustness, config edge cases, notifier resilience, and ticker edge cases (193 total tests)
+- Input validation: negative budget limits now raise `ValueError`
+- `MAX_TASK_PROMPT_LENGTH` (10,000 chars) — long prompts are silently truncated on insert
+
+### Changed
+- Malformed YAML config files now gracefully fall back to defaults (was already handled, now explicitly tested)
+- Version bumped to 0.5.0 across `__init__.py`, `pyproject.toml`, and `setup.py`
 
 ## [0.4.0] - 2026-04-07
 
 ### Added
-- `history` command
-- `completion` command
-- 29 integration tests
-- `.gitignore`
-- `py.typed` marker
+- `history` command — browse past session costs with `--agent`, `--since`, `--min-cost`, `--json` filters
+- `completion` command — generate shell completions for bash/zsh/fish with `--install` flag
+- 29 integration tests covering CLI, storage, pricing, detection, wrapper, and budget end-to-end
+- `.gitignore` (was missing — __pycache__, eggs, build artifacts)
+- `py.typed` marker for PEP 561 type hint support
+
+### Changed
+- Better error messages: distinct exit codes for command not found (127), permission denied (126), unexpected errors
+- KeyboardInterrupt now saves partial session data before exiting
+- Version now read from `__init__.__version__` instead of hardcoded in CLI
+- Fixed version mismatch across pyproject.toml, setup.py, and __init__.py
+- Cleaned up pyproject.toml for PyPI: proper `include` filter, project URLs
 
 ## [0.3.0] - 2026-04-07
 
 ### Added
-- Config file support (`~/.agent-tally/config.yaml`)
-- `config init/show/edit/pricing` commands
-- `--json` flag on `summary`
-- 30+ model prices
-- 40 new tests
+- Config file support (`~/.agent-tally/config.yaml`) for default budgets, preferences, and model pricing overrides
+- `agent-tally config init` — create a sample config file
+- `agent-tally config show` — display current configuration
+- `agent-tally config edit` — open config in your editor
+- `agent-tally config pricing` — show pricing table for all models (was `config show`)
+- `--json` flag on `summary` command for programmatic/scripting use
+- 30+ model prices added across Anthropic, OpenAI, Google, xAI, DeepSeek, Meta, Mistral, Cohere, and Chinese providers
+- Expanded token detection regex patterns:
+  - JSON API style (`input_tokens`/`output_tokens`, `prompt_tokens`/`completion_tokens`)
+  - Google API style (`totalTokenCount`/`candidatesTokenCount`)
+  - Case-insensitive `Input tokens`/`Output tokens` variations
+- 40 new tests covering config, detection, and pricing edge cases
+
+### Changed
+- `agent-tally config show` now shows unified config (use `config pricing` for model prices)
+- Generic agent fallback now tries 6 regex patterns instead of 2
 
 ## [0.2.0] - 2026-03-22
 
 ### Added
-- Rich TUI dashboard
+- Rich TUI dashboard (`agent-tally dashboard`)
 - Budget enforcement with kill switch
 - Webhook alerts (Discord/Slack)
 - CSV export
 - `summary --by-agent/--by-model/--by-task` grouping
 - PyPI package with proper setup.py
+
+### Changed
+- Renamed `track` command to `run` (old `track` still works as hidden alias)
+- Improved real-time ticker display
 
 ## [0.1.0] - 2026-03-15
 
