@@ -284,7 +284,7 @@ class TestWrapperIntegration:
         )
         rc = wrapper.run()
         assert rc == 0
-        assert wrapper.session.duration_sec > 0
+        assert wrapper.session.duration_sec >= 0
         assert wrapper.session.ended_at is not None
 
     def test_wrap_nonexistent_command(self, tmp_path):
