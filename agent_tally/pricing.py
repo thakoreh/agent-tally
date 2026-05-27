@@ -186,6 +186,13 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "deepseek-r5": {"input": 0.80, "output": 3.20},
     "llama-5": {"input": 0.30, "output": 1.20},
     "mistral-7b-v2": {"input": 0.10, "output": 0.30},
+    # ── 2026 Q2 mid-cycle releases ──────────────────────────────
+    "gpt-5.5-instant": {"input": 0.50, "output": 2.00},  # ChatGPT default May 2026
+    "gemini-3.1-flash-lite": {"input": 0.08, "output": 0.30},  # Lightweight variant
+    "grok-4.3": {"input": 0.25, "output": 0.60},  # Wider rollout May 2026
+    "subq-1m-preview": {"input": 0.50, "output": 2.00},  # Subquadratic, long-context
+    "zaya-1-8b": {"input": 0.05, "output": 0.15},  # Zyphra MoE open-source
+
 }
 
 
@@ -195,11 +202,11 @@ PROVIDER_GROUPS: dict[str, list[str]] = {
                   "claude-haiku-4", "claude-haiku-3.5", "claude-code", "claude-3.5-sonnet", "claude-3.5-sonnet-20241022", "claude-3.5-haiku",
                   "claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
     "OpenAI": ["gpt-6.5", "gpt-6.5-turbo", "gpt-6", "gpt-6-turbo", "gpt-5.5", "gpt-5.4", "gpt-5.2-codex", "gpt-5.2-pro", "gpt-5-mini", "gpt-5-nano",
-               "gpt-5o", "gpt-5.4-thinking", "o3-mini", "o3", "o4-mini", "o4", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+               "gpt-5o", "gpt-5.4-thinking", "o3-mini", "o3", "o4-mini", "o4", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-5.5-instant"],
     "Google": ["gemini-5.0-pro", "gemini-5.0-flash", "gemini-4.5-pro", "gemini-4.5-flash", "gemini-4.0-pro", "gemini-4.0-flash", "gemini-4.0-flash-exp", "gemini-3.1-flash", "gemini-3.1-pro",
               "gemini-3.1-ultra", "gemini-3.5-pro", "gemini-2.5-flash", "gemini-2.5-pro",
-              "gemini-2.5-flash-1.2", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
-    "xAI": ["grok-5-mini", "grok-5", "grok-4.20", "grok-4", "grok-4.1", "grok-3.5", "grok-3", "grok-3-mini", "grok-mini", "grok-2"],
+              "gemini-2.5-flash-1.2", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-3.1-flash-lite"],
+    "xAI": ["grok-5-mini", "grok-5", "grok-4.20", "grok-4", "grok-4.1", "grok-3.5", "grok-3", "grok-3-mini", "grok-mini", "grok-2", "grok-4.3"],
     "DeepSeek": ["deepseek-r5", "deepseek-v5.5", "deepseek-v5.1", "deepseek-v5", "deepseek-v4", "deepseek-v4-reasoning", "deepseek-v4.5", "deepseek-v3",
                  "deepseek-r4", "deepseek-r3", "deepseek-r2", "deepseek-r1", "deepseek-coder-v3", "deepseek-chat", "deepseek-v2"],
     "Meta": ["llama-5", "llama-4.0", "llama-4-maverick", "llama-4-scout", "llama-3.3-70b"],
@@ -218,6 +225,8 @@ PROVIDER_GROUPS: dict[str, list[str]] = {
     "Microsoft": ["phi-4", "mai-ds-r1"],
     "Other OSS": ["dbrx-instruct", "mixtral-8x7b", "llama-3.1-8b", "llama-3.1-70b"],
     "Cursor": ["cursor-small", "cursor-pro"],
+    "Subquadratic": ["subq-1m-preview"],
+    "Zyphra": ["zaya-1-8b"],
 }
 
 
