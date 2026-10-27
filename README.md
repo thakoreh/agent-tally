@@ -18,6 +18,9 @@ pip install agent-tally
 Python 3.9 or newer is required. Check `agent-tally --version`: PyPI currently
 serves 0.9.0, while this checkout is 0.14.0. Source fixes and newer commands
 remain unavailable through the published install until a maintainer releases them.
+The [0.14.0 release handoff](docs/release-0.14.0.md) records the tested artifacts
+and the remaining publishing step. After publication, upgrade with
+`python -m pip install --upgrade agent-tally` and verify the installed version.
 For source setup in a fresh virtual environment:
 
 ```bash

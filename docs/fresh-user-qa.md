@@ -72,7 +72,8 @@ uv pip install --python .venv-sdist/Scripts/python.exe dist/agent_tally-0.14.0.t
 
 The published package remains 0.9.0. These source fixes and newer 0.14.0 commands
 are unavailable via `pip install agent-tally` until a maintainer reviews, merges,
-and publishes a release. This QA does not authorize publication.
+and publishes a release. Publication was subsequently authorized; the
+[release handoff](release-0.14.0.md) records the separate publishing prerequisite.
 
 The parser still takes the first matched usage record, not a sum across requests.
 It cannot enforce spend before usage is printed or account for every cache,

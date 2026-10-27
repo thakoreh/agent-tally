@@ -4,7 +4,21 @@ All notable changes to agent-tally will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-## [0.14.0] - 2026-05-27
+## [0.14.0] - Unreleased
+
+Release candidate prepared 2026-10-27. Versions 0.10.0 through 0.14.0 were
+source milestones; PyPI still serves 0.9.0. This release keeps the existing
+0.14.0 version rather than skipping to 0.14.1 before 0.14.0 is published.
+
+### Fixed
+- Correct fresh-user welcome commands and empty JSON output.
+- Reject negative and non-finite budgets without partially updating limits.
+- Distinguish unknown pricing from a free estimate, including the initial ticker.
+- Terminate the wrapped child at the budget limit and persist partial session usage.
+- Save interrupted and failed sessions, include current usage in daily budgets,
+  and preserve task/tag metadata.
+- Forward child options after the executable and handle redirected Windows output.
+- Use one packaging metadata source and verify installed wheel/sdist consumers.
 
 ### Added
 - **Session notes**: Add notes to sessions with `agent-tally note <id> <text>`. Notes accumulate semicolon-separated.
