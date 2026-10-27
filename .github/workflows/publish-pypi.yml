@@ -1,0 +1,131 @@
+name: Publish verified PyPI release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Reviewed release with fixed source and artifact hashes
+        required: true
+        type: choice
+        default: v0.14.0
+        options: [v0.14.0]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pypi-publish-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'thakoreh/agent-tally' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      needs_upload: ${{ steps.verify.outputs.needs_upload }}
+    steps:
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+      - name: Verify immutable release and registry state
+        id: verify
+        env:
+          SELECTED_TAG: ${{ inputs.release_tag }}
+        shell: python
+        run: |
+          import email.parser
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import tarfile
+          import urllib.error
+          import urllib.request
+          import zipfile
+
+          spec = json.loads('{"directory":"agent-tally","repo":"agent-tally","branch":"main","package":"agent-tally","version":"0.14.0","tag":"v0.14.0","source":"e5e8c5a31ab3eb49cab7c59c0dbf8818118f2093","files":{"agent_tally-0.14.0-py3-none-any.whl":"78d101caa0696440587ba84babaa855398efc38595106c2fe53945b6b4bc01f4","agent_tally-0.14.0.tar.gz":"2c625bf85b6d8749370c395f42c8a24afe4413474d7b0c8ce53edae6a1401ff7"}}')
+          assert os.environ['SELECTED_TAG'] == spec['tag'], 'Unreviewed release tag'
+
+          def get_json(url, missing_ok=False):
+              request = urllib.request.Request(url, headers={'User-Agent': 'verified-pypi-release'})
+              try:
+                  with urllib.request.urlopen(request, timeout=60) as response:
+                      return json.load(response)
+              except urllib.error.HTTPError as error:
+                  if missing_ok and error.code == 404:
+                      return None
+                  raise
+
+          api = 'https://api.github.com/repos/thakoreh/' + spec['repo']
+          release = get_json(api + '/releases/tags/' + spec['tag'])
+          assert not release['draft'] and release['tag_name'] == spec['tag']
+          reference = get_json(api + '/git/ref/tags/' + spec['tag'])['object']
+          if reference['type'] == 'tag':
+              reference = get_json(reference['url'])['object']
+          assert reference['type'] == 'commit' and reference['sha'] == spec['source'], 'Source tag changed'
+          assets = {asset['name']: asset for asset in release['assets']}
+          packages = Path('release-artifacts/packages')
+          packages.mkdir(parents=True)
+          for name, expected in spec['files'].items():
+              assert assets[name]['digest'] == 'sha256:' + expected, 'Release digest changed'
+              url = 'https://github.com/thakoreh/' + spec['repo'] + '/releases/download/' + spec['tag'] + '/' + name
+              with urllib.request.urlopen(url, timeout=60) as response:
+                  data = response.read()
+              assert hashlib.sha256(data).hexdigest() == expected, 'Downloaded bytes changed'
+              path = packages / name
+              path.write_bytes(data)
+              if name.endswith('.whl'):
+                  with zipfile.ZipFile(path) as archive:
+                      members = [n for n in archive.namelist() if n.endswith('.dist-info/METADATA')]
+                      assert len(members) == 1
+                      metadata = archive.read(members[0])
+              else:
+                  with tarfile.open(path) as archive:
+                      members = [m for m in archive.getmembers() if m.isfile() and m.name.count('/') == 1 and m.name.endswith('/PKG-INFO')]
+                      assert len(members) == 1
+                      metadata = archive.extractfile(members[0]).read()
+              fields = email.parser.BytesParser().parsebytes(metadata)
+              assert fields['Name'].lower().replace('_', '-') == spec['package']
+              assert fields['Version'] == spec['version']
+
+          published = get_json('https://pypi.org/pypi/' + spec['package'] + '/' + spec['version'] + '/json', missing_ok=True)
+          if published is not None:
+              actual = {f['filename']: f['digests']['sha256'] for f in published['urls']}
+              assert actual == spec['files'], 'Existing PyPI version differs; refusing overwrite'
+          Path('release-artifacts/verification.json').write_text(json.dumps(spec, indent=2) + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('needs_upload=' + str(published is None).lower() + '\n')
+          print('Verified release tag, package metadata and both immutable artifact hashes. Already published:', published is not None)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-distributions
+          path: release-artifacts/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: verify
+    if: needs.verify.outputs.needs_upload == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/agent-tally/
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verified-distributions
+          path: release-artifacts/
+      - name: Recheck bytes immediately before upload
+        shell: bash
+        run: |
+          sha256sum --check --strict <<'SHA256'
+          78d101caa0696440587ba84babaa855398efc38595106c2fe53945b6b4bc01f4  release-artifacts/packages/agent_tally-0.14.0-py3-none-any.whl
+          2c625bf85b6d8749370c395f42c8a24afe4413474d7b0c8ce53edae6a1401ff7  release-artifacts/packages/agent_tally-0.14.0.tar.gz
+          SHA256
+      - name: Upload reviewed distributions using Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
+        with:
+          packages-dir: release-artifacts/packages/
