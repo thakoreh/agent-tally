@@ -174,7 +174,7 @@ def print_welcome() -> None:
     """Print welcome banner."""
     console.print(Panel(
         "[bold]agent-tally[/bold] — track costs across every AI coding agent\n"
-        "[dim]Wrap any agent command: agent-tally claude 'fix the bug'[/dim]",
+        "[dim]Wrap any agent command: agent-tally run claude 'fix the bug'[/dim]",
         box=box.ROUNDED,
         border_style="cyan",
     ))

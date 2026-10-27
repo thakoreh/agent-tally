@@ -46,6 +46,7 @@ class CostTicker:
         self.get_daily_total = get_daily_total or (lambda: 0.0)
         
         self._cost = 0.0
+        self._cost_known = False
         self._tokens_in = 0
         self._tokens_out = 0
         self._model: Optional[str] = None
@@ -82,6 +83,7 @@ class CostTicker:
         """
         with self._lock:
             self._cost = cost
+            self._cost_known = True
             self._tokens_in = tokens_in
             self._tokens_out = tokens_out
             if model:
@@ -104,7 +106,7 @@ class CostTicker:
         return self.budget_manager.check(
             self.session_id,
             self._cost,
-            self.get_daily_total(),
+            self.get_daily_total() + self._cost,
         )
     
     def _render(self) -> None:
@@ -122,7 +124,7 @@ class CostTicker:
             parts.append(f"{self.DIM}{mins:02d}:{secs:02d}{self.RESET}")
         
         # Cost (main number)
-        cost_str = f"${self._cost:.4f}"
+        cost_str = f"${self._cost:.4f}" if self._cost_known else "N/A (usage/pricing unknown)"
         if self._cost > 5.0:
             cost_color = self.RED
         elif self._cost > 1.0:

@@ -353,7 +353,7 @@ class TestTickerEdgeCases:
         text = ticker._get_budget_text(status)
         assert text == ""
 
-    def test_incremental_tracker_double_kill(self, tmp_path):
+    def test_incremental_tracker_double_kill(self, tmp_path, monkeypatch):
         """Tracker should only kill once."""
         manager = BudgetManager(config_path=tmp_path / "budget.yaml")
         manager.set_limits(session=1.0)
@@ -363,11 +363,15 @@ class TestTickerEdgeCases:
         )
         ticker.start()
         tracker = IncrementalCostTracker(ticker=ticker, budget_manager=manager, pid=99999)
+        from unittest.mock import Mock
+        kill = Mock()
+        monkeypatch.setattr(manager, 'kill_process', kill)
         tracker.set_cost(2.0)
         assert tracker.killed
         # Second call should not re-kill
         tracker.set_cost(3.0)
         assert tracker.killed
+        kill.assert_called_once_with(99999)
         ticker.stop()
 
     # ── New edge case tests for enhanced token patterns ───────────────

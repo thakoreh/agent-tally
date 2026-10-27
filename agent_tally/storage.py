@@ -128,7 +128,7 @@ class Storage:
         if session.id is None:
             return
         self.conn.execute(
-            """UPDATE sessions SET tokens_in=?, tokens_out=?, cost=?, ended_at=?, duration_sec=?, model=?
+            """UPDATE sessions SET tokens_in=?, tokens_out=?, cost=?, ended_at=?, duration_sec=?, model=?, task_prompt=?, tags=?
                WHERE id=?""",
             (
                 session.tokens_in,
@@ -137,6 +137,8 @@ class Storage:
                 session.ended_at.isoformat() if session.ended_at else None,
                 session.duration_sec,
                 session.model,
+                session.task_prompt[:MAX_TASK_PROMPT_LENGTH],
+                session.tags,
                 session.id,
             ),
         )

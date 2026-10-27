@@ -40,6 +40,20 @@ Before relying on an estimate:
 
 The parser currently takes the first matching usage record from the captured output; it does not add up every event in a stream. Treat multi-request sessions and changing output formats as cases to verify explicitly. Budget checks depend on the usage the wrapper can detect. They are not a provider-enforced spending cap.
 
+The ticker starts at `N/A (usage/pricing unknown)` until a recognized model and
+usage can be priced. `agent-tally cost unknown-model 1000 500 --json` returns
+`pricing_status: "unknown"` and `estimated_cost_usd: null`, rather than an apparent
+free estimate. Numeric session storage and historical aggregate totals retain
+their existing zero representation for unknown usage/pricing. Batch cost output
+also retains that legacy numeric representation; verify every model price before
+relying on batch totals.
+
+Budget termination saves detected usage and returns 137; interruption saves the
+captured partial usage and returns 130. Only the direct wrapped process is
+terminated. Detached descendants, buffered usage, silent output, and requests
+already sent to providers remain outside this guarantee. Use provider-side limits
+when a hard spending cap is required.
+
 ## Help improve coverage
 
 A useful [issue](https://github.com/thakoreh/agent-tally/issues) includes the agent CLI and version, model identifier, a minimal redacted usage-output sample, expected token counts, and the detected result. Include whether the sample is a per-request event or a cumulative session total.

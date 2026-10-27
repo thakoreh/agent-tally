@@ -15,6 +15,18 @@
 pip install agent-tally
 ```
 
+Python 3.9 or newer is required. Check `agent-tally --version`: PyPI currently
+serves 0.9.0, while this checkout is 0.14.0. Source fixes and newer commands
+remain unavailable through the published install until a maintainer releases them.
+For source setup in a fresh virtual environment:
+
+```bash
+python -m venv .venv
+# Activate .venv (Windows: .venv\Scripts\activate; macOS/Linux: source .venv/bin/activate)
+python -m pip install -e ".[dev]"
+python -m pytest
+```
+
 ## Quick Start
 
 ```bash
@@ -27,6 +39,23 @@ agent-tally budget set --daily 5.00 --session 1.00
 # Watch costs live
 agent-tally dashboard
 ```
+
+With no tracked sessions, `history`, `recent`, `top`, and `export` return `[]`
+in JSON mode. `hourly --json` returns an object containing an empty `hourly` list.
+Running `agent-tally` alone displays onboarding help and does not discover past
+agent sessions or require credentials.
+
+Put wrapper options before the agent command: `agent-tally run --tag demo claude --help`.
+Options after the command belong to the child. Missing commands return 127;
+child failures preserve their exit code; interruption returns 130; budget termination
+returns 137 and saves detected partial usage.
+
+Costs are local estimates from printed usage and configured model prices. Missing
+usage or prices display `N/A`; `cost --json` reports `estimated_cost_usd: null` and
+`pricing_status: "unknown"` for an unpriced model. Stored session costs still use
+numeric zero for unknown estimates, so totals can understate spend. Confirm usage
+coverage and rates before using budgets. The wrapper terminates the direct child;
+detached descendants and provider requests already sent may continue.
 
 Output while your agent runs:
 

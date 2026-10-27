@@ -14,16 +14,16 @@ def _insert_sample_sessions(storage: Storage) -> None:
     """Insert sample sessions for testing."""
     sessions = [
         Session(agent="Claude Code", model="claude-sonnet-4", tokens_in=5000, tokens_out=2000,
-                cost=0.045, started_at=datetime(2026, 5, 27, 10, 0), ended_at=datetime(2026, 5, 27, 10, 5),
+                cost=0.045, started_at=datetime.now().replace(hour=10, minute=0, second=0, microsecond=0), ended_at=datetime.now().replace(hour=10, minute=5, second=0, microsecond=0),
                 duration_sec=300, task_prompt="fix the bug"),
         Session(agent="Codex CLI", model="gpt-5.2-codex", tokens_in=8000, tokens_out=3000,
-                cost=0.062, started_at=datetime(2026, 5, 27, 11, 0), ended_at=datetime(2026, 5, 27, 11, 3),
+                cost=0.062, started_at=datetime.now().replace(hour=11, minute=0, second=0, microsecond=0), ended_at=datetime.now().replace(hour=11, minute=3, second=0, microsecond=0),
                 duration_sec=180, task_prompt="add tests"),
         Session(agent="OpenClaw", model="glm-5", tokens_in=2000, tokens_out=1000,
-                cost=0.001, started_at=datetime(2026, 5, 27, 12, 0), ended_at=datetime(2026, 5, 27, 12, 2),
+                cost=0.001, started_at=datetime.now().replace(hour=12, minute=0, second=0, microsecond=0), ended_at=datetime.now().replace(hour=12, minute=2, second=0, microsecond=0),
                 duration_sec=120, task_prompt="explain code"),
         Session(agent="Claude Code", model="gpt-4o", tokens_in=3000, tokens_out=1500,
-                cost=0.035, started_at=datetime(2026, 5, 27, 13, 0), ended_at=datetime(2026, 5, 27, 13, 1),
+                cost=0.035, started_at=datetime.now().replace(hour=13, minute=0, second=0, microsecond=0), ended_at=datetime.now().replace(hour=13, minute=1, second=0, microsecond=0),
                 duration_sec=60, task_prompt="refactor module"),
     ]
     for s in sessions:
@@ -191,7 +191,7 @@ class TestStorageSummaryByProvider:
         _insert_sample_sessions(storage)
 
         # Only sessions from 11am onwards
-        since = datetime(2026, 5, 27, 11, 0)
+        since = datetime.now().replace(hour=11, minute=0, second=0, microsecond=0)
         result = storage.summary_by_provider(since=since)
         total_sessions = sum(r["sessions"] for r in result)
         assert total_sessions == 3  # 3 sessions at 11, 12, 13

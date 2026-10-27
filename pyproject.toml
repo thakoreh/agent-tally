@@ -35,9 +35,6 @@ Issues = "https://github.com/thakoreh/agent-tally/issues"
 [tool.setuptools.package-data]
 agent_tally = ["py.typed"]
 
-[options.entry_points]
-console_scripts = "agent-tally"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["-v"]

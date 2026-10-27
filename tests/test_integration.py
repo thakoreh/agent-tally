@@ -277,7 +277,7 @@ class TestWrapperIntegration:
         ))
 
         wrapper = AgentWrapper(
-            args=["echo", "hello world"],
+            args=[sys.executable, "-c", "print('hello world')"],
             storage=Storage(db_path=db_path),
             budget_manager=BudgetManager(config_path=tmp_path / "budget.yaml"),
             enable_ticker=False,
@@ -301,7 +301,7 @@ class TestWrapperIntegration:
     def test_wrap_failing_command(self, tmp_path):
         """Wrapping a command that exits non-zero should return its exit code."""
         wrapper = AgentWrapper(
-            args=["false"],
+            args=[sys.executable, "-c", "raise SystemExit(1)"],
             storage=Storage(db_path=tmp_path / "test.sqlite"),
             budget_manager=BudgetManager(config_path=tmp_path / "budget.yaml"),
             enable_ticker=False,

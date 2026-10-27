@@ -111,7 +111,7 @@ class TestEnhancedConfig:
         assert config.default_model == "gpt-4"
         assert config.currency == "CAD"
 
-    def test_config_yaml_handling(self):
+    def test_config_yaml_handling(self, tmp_path):
         """Test config YAML handling."""
         # Test creating a valid config
         config = AgentTallyConfig()
@@ -119,10 +119,10 @@ class TestEnhancedConfig:
         config.session_budget = 5.0
         
         # Should not crash when saving
-        save_config(config, Path("/tmp/test_config.yaml"))
+        save_config(config, tmp_path / "test_config.yaml")
         
         # Should be able to load it back
-        loaded_config = load_config(Path("/tmp/test_config.yaml"))
+        loaded_config = load_config(tmp_path / "test_config.yaml")
         assert loaded_config.daily_budget == 10.0
         assert loaded_config.session_budget == 5.0
 
@@ -327,21 +327,21 @@ class TestEnhancedIntegration:
                 detected = detect_provider(model_name)
                 assert detected == expected_provider
 
-    def test_config_and_storage_integration(self):
+    def test_config_and_storage_integration(self, tmp_path):
         """Test config and storage integration."""
         # Create a config
         config = AgentTallyConfig()
         config.daily_budget = 10.0
         
         # Save it
-        save_config(config, Path("/tmp/integration_test.yaml"))
+        save_config(config, tmp_path / "integration_test.yaml")
         
         # Load it back
-        loaded_config = load_config(Path("/tmp/integration_test.yaml"))
+        loaded_config = load_config(tmp_path / "integration_test.yaml")
         assert loaded_config.daily_budget == 10.0
         
         # Test storage with session
-        storage = Storage()
+        storage = Storage(tmp_path / "integration.sqlite")
         session = Session(
             agent="integration-test",
             started_at=datetime.now(),

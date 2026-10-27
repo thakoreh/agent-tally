@@ -163,7 +163,7 @@ class TestIncrementalCostTracker:
         
         ticker.stop()
     
-    def test_tracker_kill_on_exceeded(self, tmp_path):
+    def test_tracker_kill_on_exceeded(self, tmp_path, monkeypatch):
         """Test tracker kills when budget exceeded."""
         config_path = tmp_path / "budget.yaml"
         manager = BudgetManager(config_path=config_path)
@@ -177,7 +177,10 @@ class TestIncrementalCostTracker:
         )
         ticker.start()
         
-        # Use a fake PID that won't exist
+        # Never send signals to an arbitrary host PID.
+        from unittest.mock import Mock
+        kill = Mock()
+        monkeypatch.setattr(manager, 'kill_process', kill)
         tracker = IncrementalCostTracker(
             ticker=ticker,
             budget_manager=manager,
@@ -188,5 +191,6 @@ class TestIncrementalCostTracker:
         tracker.set_cost(1.5)
         
         assert tracker.killed
+        kill.assert_called_once_with(99999)
         
         ticker.stop()
