@@ -1,5 +1,7 @@
 """Fresh CLI consumers and wrapper lifecycle regressions; synthetic inputs only."""
 import json
+import os
+import subprocess
 import sys
 from unittest.mock import MagicMock
 
@@ -143,3 +145,12 @@ def test_ticker_does_not_claim_zero_before_detection(capsys):
     assert 'N/A (usage/pricing unknown)' in capsys.readouterr().out
     ticker.update(0)
     assert '$0.0000' in capsys.readouterr().out
+
+
+def test_wrapped_run_on_legacy_windows_encoding(tmp_path):
+    env = dict(os.environ, HOME=str(tmp_path), USERPROFILE=str(tmp_path), PYTHONIOENCODING='cp1252')
+    result = subprocess.run([sys.executable, '-c', 'from agent_tally.cli import cli; cli()',
+                             'run', sys.executable, '-c', 'print(123)'],
+                            env=env, capture_output=True, timeout=15)
+    assert result.returncode == 0, result.stderr
+    assert b'123' in result.stdout

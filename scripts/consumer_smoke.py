@@ -40,4 +40,6 @@ with tempfile.TemporaryDirectory() as folder:
     run('run', 'missing-synthetic-agent-xyz', expected=127)
     rows = json.loads(run('export', '--json'))
     assert len(rows) == 3 and all(row['ended_at'] for row in rows)
+    env['PYTHONIOENCODING'] = 'cp1252'
+    assert '123' in run('run', sys.executable, '-c', 'print(123)')
 print('Installed CLI consumer smoke passed (empty, unknown pricing, budget kill, repeated/error flows).')

@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from typing import Optional
 
-import click
+from .terminal import echo
 
 from .detector import AgentInfo, detect_agent, parse_tokens, parse_model
 from .pricing import PricingConfig
@@ -83,8 +83,7 @@ class AgentWrapper:
 
             # Stream output in real-time
             for line in process.stdout:
-                sys.stdout.write(line)
-                sys.stdout.flush()
+                echo(line, nl=False)
                 self._captured_output.append(line)
                 
                 # Try to parse incremental cost from output
@@ -95,20 +94,20 @@ class AgentWrapper:
             return_code = process.returncode
 
         except FileNotFoundError:
-            click.echo(f"\n\033[31m✗ agent-tally: command not found: {self.args[0]}\033[0m", file=sys.stderr)
-            click.echo(f"\033[90m  Make sure '{self.args[0]}' is installed and in your PATH.\033[0m", file=sys.stderr)
-            click.echo(f"\033[90m  Install help: https://github.com/thakoreh/agent-tally#supported-agents\033[0m", file=sys.stderr)
+            echo(f"\n\033[31m✗ agent-tally: command not found: {self.args[0]}\033[0m", file=sys.stderr)
+            echo(f"\033[90m  Make sure '{self.args[0]}' is installed and in your PATH.\033[0m", file=sys.stderr)
+            echo(f"\033[90m  Install help: https://github.com/thakoreh/agent-tally#supported-agents\033[0m", file=sys.stderr)
             return_code = 127
         except PermissionError:
-            click.echo(f"\n\033[31m✗ agent-tally: permission denied: {self.args[0]}\033[0m", file=sys.stderr)
-            click.echo(f"\033[90m  Check that '{self.args[0]}' is executable.\033[0m", file=sys.stderr)
+            echo(f"\n\033[31m✗ agent-tally: permission denied: {self.args[0]}\033[0m", file=sys.stderr)
+            echo(f"\033[90m  Check that '{self.args[0]}' is executable.\033[0m", file=sys.stderr)
             return_code = 126
         except KeyboardInterrupt:
-            click.echo(f"\n\033[33m⏸ agent-tally: session interrupted by user\033[0m")
+            echo(f"\n\033[33m⏸ agent-tally: session interrupted by user\033[0m")
             return_code = 130
         except Exception as e:
-            click.echo(f"\n\033[31m✗ agent-tally: unexpected error: {e}\033[0m", file=sys.stderr)
-            click.echo(f"\033[90m  This may be a bug. Please report: https://github.com/thakoreh/agent-tally/issues\033[0m", file=sys.stderr)
+            echo(f"\n\033[31m✗ agent-tally: unexpected error: {e}\033[0m", file=sys.stderr)
+            echo(f"\033[90m  This may be a bug. Please report: https://github.com/thakoreh/agent-tally/issues\033[0m", file=sys.stderr)
             return_code = 1
         finally:
             if process is not None:
@@ -212,10 +211,10 @@ class AgentWrapper:
         if self.session.cost > 5.0:
             color = "31"  # red
 
-        print(f"\033[{color}m──────────────────────────────────────\033[0m")
-        print(f"\033[{color}m⏱ agent-tally: {self.session.duration_sec:.1f}s | {tokens_str} | {cost_str}\033[0m")
+        echo(f"\033[{color}m──────────────────────────────────────\033[0m")
+        echo(f"\033[{color}m⏱ agent-tally: {self.session.duration_sec:.1f}s | {tokens_str} | {cost_str}\033[0m")
         if self.session.model:
-            print(f"\033[90m  model: {self.session.model}\033[0m")
+            echo(f"\033[90m  model: {self.session.model}\033[0m")
         
         # Show budget status
         if self.budget_manager.config.daily_limit or self.budget_manager.config.session_limit:
@@ -225,9 +224,9 @@ class AgentWrapper:
                 self._get_daily_total() + self.session.cost,
             )
             budget_text = self.budget_manager.get_status_text(status)
-            print(f"\033[90m  budget: {budget_text}\033[0m")
+            echo(f"\033[90m  budget: {budget_text}\033[0m")
         
-        print(f"\033[{color}m──────────────────────────────────────\033[0m")
+        echo(f"\033[{color}m──────────────────────────────────────\033[0m")
 
     def _get_daily_total(self) -> float:
         """Get total cost for today."""

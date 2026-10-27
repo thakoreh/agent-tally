@@ -1,7 +1,7 @@
 """Real-time cost ticker with ANSI escape codes."""
 
 from __future__ import annotations
-import sys
+from .terminal import echo
 import time
 import threading
 from datetime import datetime
@@ -67,8 +67,7 @@ class CostTicker:
         """Stop the ticker and print final line."""
         self._running = False
         # Move to new line so final output isn't overwritten
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+        echo()
     
     def update(
         self,
@@ -151,8 +150,7 @@ class CostTicker:
         line = " │ ".join(parts)
         output = f"{self.CLEAR_LINE}{self.CURSOR_START}{line}"
         
-        sys.stdout.write(output)
-        sys.stdout.flush()
+        echo(output, nl=False)
     
     def _get_budget_text(self, status: BudgetStatus) -> str:
         """Get budget display text with color coding."""
@@ -187,16 +185,14 @@ class CostTicker:
         color = self.YELLOW if level == "yellow" else self.RED
         # Move up, clear, print warning, then re-render ticker
         warning = f"{self.CURSOR_UP}{self.CLEAR_LINE}{self.CURSOR_START}{color}⚠️ {message}{self.RESET}\n"
-        sys.stdout.write(warning)
-        sys.stdout.flush()
+        echo(warning, nl=False)
         self._render()
     
     def print_kill_notice(self, reason: str) -> None:
         """Print kill notice and stop ticker."""
         msg = f"\n{self.RED}{self.BOLD}💀 BUDGET EXCEEDED: {reason}{self.RESET}\n"
         msg += f"{self.RED}Killing agent process...{self.RESET}\n"
-        sys.stdout.write(msg)
-        sys.stdout.flush()
+        echo(msg, nl=False)
 
 
 class IncrementalCostTracker:

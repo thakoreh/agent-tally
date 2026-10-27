@@ -20,6 +20,7 @@ No personal session data, provider credentials, paid APIs, or webhooks were used
 | `budget set --daily -1` (also `nan`, `inf`) | Invalid limits persisted successfully | Exit 2, no partial changes to prior limits |
 | `cost unknown-fixture-model 1000 500 --json` | Apparent zero dollar estimate | Explicit unknown pricing status, null estimate; text uses N/A |
 | Start a wrapped process before usage detection | Ticker advertised $0.0000 | Ticker shows N/A until a priceable observation |
+| Redirect `run` output with `PYTHONIOENCODING=cp1252` | Unicode ticker icon crashed before child launch | Output replaces unsupported characters without changing host encoding |
 | Synthetic printed usage exceeds a configured budget | Kill target was wrapper's own PID; no final usage persistence | Targets child PID, saves detected usage, returns 137 |
 | Historical daily cost 0.8 + current cost 0.3 with daily limit 1 | Daily check excluded current session | Daily budget is exceeded |
 | Interrupt after synthetic usage | Child could survive and captured usage was discarded | Terminates/waits for child, saves detected usage, returns 130 |
@@ -59,7 +60,7 @@ uv pip install --python .venv-sdist/Scripts/python.exe dist/agent_tally-0.14.0.t
 | --- | --- |
 | Published installation and CLI help/version/missing argument | Pass, installed 0.9.0 |
 | Published package empty JSON / invalid budget / unknown price / welcome | Fail, reproduced; release still contains these defects |
-| Source pytest | 586 passed |
+| Source pytest | 587 passed |
 | Offline cost demo | Pass, 3 synthetic cases, no provider calls |
 | Built wheel installed outside source | Pass; real budget kill, persistence, repeated sessions, child failure and missing executable |
 | Built sdist installed outside source | Pass; same consumer script |
