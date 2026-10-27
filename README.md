@@ -7,6 +7,8 @@
 
 **Real-time cost tracker for AI coding agents.** Wrap any CLI agent, see a live cost ticker while it runs, and enforce budgets with an automatic kill switch.
 
+**New here?** Try the [offline cost demo](docs/cost-accuracy.md) without an API key. It shows a detected estimate, missing usage, and an unpriced model using synthetic fixtures. Read the accuracy limits before relying on reported costs or budgets.
+
 ## Install
 
 ```bash
