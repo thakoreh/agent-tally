@@ -285,8 +285,10 @@ class TestBudgetConfigEdgeCases:
             assert manager.config.daily_limit == 0.0
             assert manager.config.session_limit == 0.0
 
-    def test_kill_process_nonexistent(self):
+    def test_kill_process_nonexistent(self, monkeypatch):
         """Killing nonexistent PID should not raise."""
+        from unittest.mock import Mock
+        monkeypatch.setattr('agent_tally.budget.os.kill', Mock(side_effect=ProcessLookupError))
         BudgetManager.kill_process(99999999)
 
     def test_warning_levels(self):

@@ -39,7 +39,7 @@ def cli(ctx: click.Context, version: bool = False) -> None:
 # RUN COMMAND (Primary entry point)
 # ═══════════════════════════════════════════════════════════════════════════
 
-@cli.command(context_settings=dict(ignore_unknown_options=True))
+@cli.command(context_settings=dict(ignore_unknown_options=True, allow_interspersed_args=False))
 @click.argument("agent_args", nargs=-1, required=True)
 @click.option("--tag", "tags", multiple=True, help="Tag this session")
 def run(agent_args: tuple[str, ...], tags: tuple[str, ...]) -> None:
@@ -63,7 +63,7 @@ def run(agent_args: tuple[str, ...], tags: tuple[str, ...]) -> None:
 
 
 # Keep 'track' as alias for backwards compatibility
-@cli.command(context_settings=dict(ignore_unknown_options=True), hidden=True)
+@cli.command(context_settings=dict(ignore_unknown_options=True, allow_interspersed_args=False), hidden=True)
 @click.argument("agent_args", nargs=-1, required=False)
 def track(agent_args: tuple[str, ...]) -> None:
     """Legacy alias for 'run'. Use 'run' instead."""
@@ -103,10 +103,11 @@ def budget_set(daily: Optional[float], session_limit: Optional[float], webhook: 
     """
     manager = BudgetManager()
     
-    if daily is not None:
-        manager.config.daily_limit = daily
-    if session_limit is not None:
-        manager.config.session_limit = session_limit
+    import math
+    for name, value in (("daily", daily), ("session", session_limit)):
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise click.BadParameter("must be a finite non-negative amount", param_hint=f"--{name}")
+    manager.set_limits(daily=daily, session=session_limit)
     if webhook is not None:
         manager.config.webhook_url = webhook
     
@@ -252,7 +253,7 @@ def history(limit: int, agent: Optional[str], since: str, min_cost: Optional[flo
         sessions = [s for s in sessions if s.cost >= min_cost]
 
     if not sessions:
-        click.echo("No sessions found.")
+        click.echo("[]" if as_json else "No sessions found.")
         storage.close()
         return
 
@@ -438,8 +439,9 @@ def export(format: str, since: str, output: Optional[str], as_json: bool) -> Non
     if as_json:
         format = "json"
 
-    if not sessions:
+    if not sessions and format != "json":
         click.echo("No sessions to export.")
+        storage.close()
         return
 
     rows = []
@@ -568,7 +570,7 @@ def top(group_by: str, since: str, limit: int, as_json: bool) -> None:
     summaries = storage.summary(since=since_dt, group_by=group_by)
 
     if not summaries:
-        click.echo("No sessions found for the given time range.")
+        click.echo("[]" if as_json else "No sessions found for the given time range.")
         storage.close()
         return
 
@@ -763,6 +765,7 @@ def cost(model_name: str, tokens_in: int, tokens_out: int, as_json: bool) -> Non
     pricing = PricingConfig()
     model_pricing = pricing.get(model_name)
     estimated = model_pricing.cost(tokens_in, tokens_out)
+    priced = model_pricing.name in pricing.all_models()
 
     if as_json:
         output = {
@@ -772,14 +775,15 @@ def cost(model_name: str, tokens_in: int, tokens_out: int, as_json: bool) -> Non
             "output_price_per_million": model_pricing.output,
             "tokens_in": tokens_in,
             "tokens_out": tokens_out,
-            "estimated_cost_usd": round(estimated, 6),
+            "estimated_cost_usd": round(estimated, 6) if priced else None,
+            "pricing_status": "estimated" if priced else "unknown",
         }
         click.echo(json_mod.dumps(output, indent=2))
     else:
         click.echo(f"Model:          {model_pricing.name}")
         click.echo(f"Input tokens:   {tokens_in:,}  @ ${model_pricing.input:.2f}/M")
         click.echo(f"Output tokens:  {tokens_out:,}  @ ${model_pricing.output:.2f}/M")
-        click.echo(f"Estimated cost: ${estimated:.6f}")
+        click.echo(f"Estimated cost: ${estimated:.6f}" if priced else "Estimated cost: N/A (model pricing unknown)")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1069,12 +1073,12 @@ def hourly(since: str, as_json: bool) -> None:
     since_dt = _parse_since(since)
     summaries = storage.summary_by_hour(since=since_dt)
 
-    if not summaries:
+    if not summaries and not as_json:
         click.echo("No sessions found for the given time range.")
         storage.close()
         return
 
-    max_cost = max(r["total_cost"] or 0 for r in summaries) or 1
+    max_cost = max((r["total_cost"] or 0 for r in summaries), default=0) or 1
 
     if as_json:
         output = {
@@ -1221,7 +1225,7 @@ def recent(limit: int, as_json: bool) -> None:
     sessions = storage.query(limit=limit)
 
     if not sessions:
-        click.echo("No sessions found.")
+        click.echo("[]" if as_json else "No sessions found.")
         storage.close()
         return
 

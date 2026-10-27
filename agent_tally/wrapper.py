@@ -1,14 +1,13 @@
 """Shell wrapper that intercepts agent CLI commands with real-time tracking."""
 
 from __future__ import annotations
-import os
 import subprocess
 import sys
 import time
 from datetime import datetime
 from typing import Optional
 
-import click
+from .terminal import echo
 
 from .detector import AgentInfo, detect_agent, parse_tokens, parse_model
 from .pricing import PricingConfig
@@ -65,11 +64,11 @@ class AgentWrapper:
             self._cost_tracker = IncrementalCostTracker(
                 ticker=self._ticker,
                 budget_manager=self.budget_manager,
-                pid=os.getpid(),
             )
 
         start_time = time.time()
         return_code = 0
+        process = None
 
         try:
             process = subprocess.Popen(
@@ -79,11 +78,12 @@ class AgentWrapper:
                 text=True,
                 bufsize=1,
             )
+            if self._cost_tracker:
+                self._cost_tracker.pid = process.pid
 
             # Stream output in real-time
             for line in process.stdout:
-                sys.stdout.write(line)
-                sys.stdout.flush()
+                echo(line, nl=False)
                 self._captured_output.append(line)
                 
                 # Try to parse incremental cost from output
@@ -94,41 +94,38 @@ class AgentWrapper:
             return_code = process.returncode
 
         except FileNotFoundError:
-            if self._ticker:
-                self._ticker.stop()
-            click.echo(f"\n\033[31m✗ agent-tally: command not found: {self.args[0]}\033[0m", file=sys.stderr)
-            click.echo(f"\033[90m  Make sure '{self.args[0]}' is installed and in your PATH.\033[0m", file=sys.stderr)
-            click.echo(f"\033[90m  Install help: https://github.com/thakoreh/agent-tally#supported-agents\033[0m", file=sys.stderr)
-            return 127
+            echo(f"\n\033[31m✗ agent-tally: command not found: {self.args[0]}\033[0m", file=sys.stderr)
+            echo(f"\033[90m  Make sure '{self.args[0]}' is installed and in your PATH.\033[0m", file=sys.stderr)
+            echo(f"\033[90m  Install help: https://github.com/thakoreh/agent-tally#supported-agents\033[0m", file=sys.stderr)
+            return_code = 127
         except PermissionError:
-            if self._ticker:
-                self._ticker.stop()
-            click.echo(f"\n\033[31m✗ agent-tally: permission denied: {self.args[0]}\033[0m", file=sys.stderr)
-            click.echo(f"\033[90m  Check that '{self.args[0]}' is executable.\033[0m", file=sys.stderr)
-            return 126
+            echo(f"\n\033[31m✗ agent-tally: permission denied: {self.args[0]}\033[0m", file=sys.stderr)
+            echo(f"\033[90m  Check that '{self.args[0]}' is executable.\033[0m", file=sys.stderr)
+            return_code = 126
         except KeyboardInterrupt:
-            if self._ticker:
-                self._ticker.stop()
-            click.echo(f"\n\033[33m⏸ agent-tally: session interrupted by user\033[0m")
-            # Save what we have so far
-            end_time = time.time()
-            self.session.ended_at = datetime.now()
-            self.session.duration_sec = round(end_time - start_time, 2)
-            self.storage.update(self.session)
-            return 130
+            echo(f"\n\033[33m⏸ agent-tally: session interrupted by user\033[0m")
+            return_code = 130
         except Exception as e:
-            if self._ticker:
-                self._ticker.stop()
-            click.echo(f"\n\033[31m✗ agent-tally: unexpected error: {e}\033[0m", file=sys.stderr)
-            click.echo(f"\033[90m  This may be a bug. Please report: https://github.com/thakoreh/agent-tally/issues\033[0m", file=sys.stderr)
-            return 1
+            echo(f"\n\033[31m✗ agent-tally: unexpected error: {e}\033[0m", file=sys.stderr)
+            echo(f"\033[90m  This may be a bug. Please report: https://github.com/thakoreh/agent-tally/issues\033[0m", file=sys.stderr)
+            return_code = 1
         finally:
+            if process is not None:
+                if process.poll() is None:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait()
+                if hasattr(process.stdout, 'close'):
+                    process.stdout.close()
             if self._ticker:
                 self._ticker.stop()
 
         # Check if killed by budget
         if self._cost_tracker and self._cost_tracker.killed:
-            return 137  # Killed
+            return_code = 137
 
         # Parse results
         end_time = time.time()
@@ -158,6 +155,7 @@ class AgentWrapper:
         # Store task prompt from args
         prompt_args = self.args[1:]
         self.session.task_prompt = " ".join(prompt_args)[:500] if prompt_args else ""
+        self.session.tags = ",".join(self.tags)
 
         # Update session
         self.session.ended_at = datetime.now()
@@ -178,7 +176,7 @@ class AgentWrapper:
         tokens = parse_tokens(output, self.agent_info)
         model = parse_model(output, self.agent_info)
         
-        if tokens and model:
+        if tokens and model and self.pricing.get(model).name in self.pricing.all_models():
             # Estimate cost so far
             estimated_cost = self.pricing.estimate(
                 model,
@@ -213,22 +211,22 @@ class AgentWrapper:
         if self.session.cost > 5.0:
             color = "31"  # red
 
-        print(f"\033[{color}m──────────────────────────────────────\033[0m")
-        print(f"\033[{color}m⏱ agent-tally: {self.session.duration_sec:.1f}s | {tokens_str} | {cost_str}\033[0m")
+        echo(f"\033[{color}m──────────────────────────────────────\033[0m")
+        echo(f"\033[{color}m⏱ agent-tally: {self.session.duration_sec:.1f}s | {tokens_str} | {cost_str}\033[0m")
         if self.session.model:
-            print(f"\033[90m  model: {self.session.model}\033[0m")
+            echo(f"\033[90m  model: {self.session.model}\033[0m")
         
         # Show budget status
         if self.budget_manager.config.daily_limit or self.budget_manager.config.session_limit:
             status = self.budget_manager.check(
                 str(self.session.id),
                 self.session.cost,
-                self._get_daily_total(),
+                self._get_daily_total() + self.session.cost,
             )
             budget_text = self.budget_manager.get_status_text(status)
-            print(f"\033[90m  budget: {budget_text}\033[0m")
+            echo(f"\033[90m  budget: {budget_text}\033[0m")
         
-        print(f"\033[{color}m──────────────────────────────────────\033[0m")
+        echo(f"\033[{color}m──────────────────────────────────────\033[0m")
 
     def _get_daily_total(self) -> float:
         """Get total cost for today."""

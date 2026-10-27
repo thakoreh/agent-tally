@@ -1,0 +1,32 @@
+name: Tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.9', '3.13']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[dev]" build
+      - name: Isolated tests
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/tally-home"
+          export HOME="$RUNNER_TEMP/tally-home"
+          export USERPROFILE="$HOME"
+          python -m pytest
+      - run: python -m build
+      - name: Wheel consumer
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/tally-consumer"
+          if [ "$RUNNER_OS" = Windows ]; then py="$RUNNER_TEMP/tally-consumer/Scripts/python.exe"; else py="$RUNNER_TEMP/tally-consumer/bin/python"; fi
+          "$py" -m pip install dist/*.whl
+          "$py" scripts/consumer_smoke.py

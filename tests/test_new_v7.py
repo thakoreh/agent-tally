@@ -67,7 +67,7 @@ class TestCostCommand:
         runner = CliRunner()
         result = runner.invoke(cli, ["cost", "totally-unknown-model-xyz", "1000", "500"])
         assert result.exit_code == 0
-        assert "$0.000000" in result.output
+        assert "N/A (model pricing unknown)" in result.output
 
     def test_cost_zero_tokens(self) -> None:
         runner = CliRunner()

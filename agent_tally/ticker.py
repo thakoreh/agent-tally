@@ -1,7 +1,7 @@
 """Real-time cost ticker with ANSI escape codes."""
 
 from __future__ import annotations
-import sys
+from .terminal import echo
 import time
 import threading
 from datetime import datetime
@@ -46,6 +46,7 @@ class CostTicker:
         self.get_daily_total = get_daily_total or (lambda: 0.0)
         
         self._cost = 0.0
+        self._cost_known = False
         self._tokens_in = 0
         self._tokens_out = 0
         self._model: Optional[str] = None
@@ -66,8 +67,7 @@ class CostTicker:
         """Stop the ticker and print final line."""
         self._running = False
         # Move to new line so final output isn't overwritten
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+        echo()
     
     def update(
         self,
@@ -82,6 +82,7 @@ class CostTicker:
         """
         with self._lock:
             self._cost = cost
+            self._cost_known = True
             self._tokens_in = tokens_in
             self._tokens_out = tokens_out
             if model:
@@ -104,7 +105,7 @@ class CostTicker:
         return self.budget_manager.check(
             self.session_id,
             self._cost,
-            self.get_daily_total(),
+            self.get_daily_total() + self._cost,
         )
     
     def _render(self) -> None:
@@ -122,7 +123,7 @@ class CostTicker:
             parts.append(f"{self.DIM}{mins:02d}:{secs:02d}{self.RESET}")
         
         # Cost (main number)
-        cost_str = f"${self._cost:.4f}"
+        cost_str = f"${self._cost:.4f}" if self._cost_known else "N/A (usage/pricing unknown)"
         if self._cost > 5.0:
             cost_color = self.RED
         elif self._cost > 1.0:
@@ -149,8 +150,7 @@ class CostTicker:
         line = " │ ".join(parts)
         output = f"{self.CLEAR_LINE}{self.CURSOR_START}{line}"
         
-        sys.stdout.write(output)
-        sys.stdout.flush()
+        echo(output, nl=False)
     
     def _get_budget_text(self, status: BudgetStatus) -> str:
         """Get budget display text with color coding."""
@@ -185,16 +185,14 @@ class CostTicker:
         color = self.YELLOW if level == "yellow" else self.RED
         # Move up, clear, print warning, then re-render ticker
         warning = f"{self.CURSOR_UP}{self.CLEAR_LINE}{self.CURSOR_START}{color}⚠️ {message}{self.RESET}\n"
-        sys.stdout.write(warning)
-        sys.stdout.flush()
+        echo(warning, nl=False)
         self._render()
     
     def print_kill_notice(self, reason: str) -> None:
         """Print kill notice and stop ticker."""
         msg = f"\n{self.RED}{self.BOLD}💀 BUDGET EXCEEDED: {reason}{self.RESET}\n"
         msg += f"{self.RED}Killing agent process...{self.RESET}\n"
-        sys.stdout.write(msg)
-        sys.stdout.flush()
+        echo(msg, nl=False)
 
 
 class IncrementalCostTracker:
